@@ -93,7 +93,7 @@ namespace RoverBot
 			}
 		}
 
-		private static void Send(string str, int chatId)
+		private static void Send(long chatId, string str)
 		{
 			if(IsValid())
 			{
@@ -142,49 +142,54 @@ namespace RoverBot
 			{
 				str = str.ToLower();
 
-				//if(str == "start")
-				//{
-				//	BinanceFutures.IsTrading = true;
-				//
-				//	Send("Торговля включена");
-				//	
-				//	return;
-				//}
-				//
-				//if(str == "stop")
-				//{
-				//	BinanceFutures.IsTrading = false;
-				//
-				//	Send("Торговля отключена");
-				//	
-				//	return;
-				//}
-				//
-				//if(str.Contains("balance") || str == "b")
-				//{
-				//	StringBuilder stringBuilder = new StringBuilder();
-				//	
-				//	stringBuilder.Append("Balance: ");
-				//	stringBuilder.Append(Format(BinanceFutures.Balance, 2));
-				//	stringBuilder.Append(" ");
-				//	stringBuilder.Append(BinanceFutures.Currency1);
-				//	
-				//	stringBuilder.Append(", ");
-				//	stringBuilder.Append(Format(BinanceFutures.FeeBalance, 2));
-				//	stringBuilder.Append(" USDT for fees");
-				//
-				//	stringBuilder.Append(", Frozen: ");
-				//	stringBuilder.Append(Format(BinanceFutures.Frozen, 2));
-				//	stringBuilder.Append(" " + BinanceFutures.Currency1);
-				//	
-				//	stringBuilder.Append(", Total: ");
-				//	stringBuilder.Append(Format(BinanceFutures.TotalBalance+BinanceFutures.FeeBalance, 2));
-				//	stringBuilder.Append(" " + BinanceFutures.Currency1);
-				//	
-				//	Send(stringBuilder.ToString());
-				//
-				//	return;
-				//}
+				if(str == "start")
+				{
+					TradeBot.IsTrading = true;
+					
+					Send("Торговля включена");
+					
+					return;
+				}
+				
+				if(str == "stop")
+				{
+					TradeBot.IsTrading = false;
+					
+					Send("Торговля отключена");
+					
+					return;
+				}
+				
+				if(str.Contains("balance") || str == "b")
+				{
+					StringBuilder stringBuilder = new StringBuilder();
+
+					stringBuilder.Append("Balance: ");
+
+					stringBuilder.Append(Format(TradeBot.Balance1, 4));
+					stringBuilder.Append(" ");
+					stringBuilder.Append(TradeBot.Currency1);
+					stringBuilder.Append(", ");
+
+					stringBuilder.Append(Format(TradeBot.Balance2, 6));
+					stringBuilder.Append(" ");
+					stringBuilder.Append(TradeBot.Currency2);
+
+					if(TradeBot.Currency2 != "BNB")
+					{
+						stringBuilder.Append(", ");
+						stringBuilder.Append(Format(TradeBot.FeeCoins, 4));
+						stringBuilder.Append(" BNB");
+					}
+
+					stringBuilder.Append(", Total: ");
+					stringBuilder.Append(Format(TradeBot.TotalBalance, 2));
+					stringBuilder.Append(" USDT");
+					
+					Send(chatId, stringBuilder.ToString());
+					
+					return;
+				}
 			}
 			catch(Exception exception)
 			{

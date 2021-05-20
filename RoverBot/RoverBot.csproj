@@ -186,6 +186,7 @@
     <Compile Include="Helpers\Logger.cs" />
     <Compile Include="Helpers\StrategyBuilder.cs" />
     <Compile Include="Helpers\TelegramBot.cs" />
+    <Compile Include="Objects\SellOrder.cs" />
     <Compile Include="TradeBot.cs" />
     <Compile Include="Helpers\WebSocketSpot.cs" />
     <Compile Include="Objects\BookTicker.cs" />
