@@ -9,7 +9,9 @@ namespace RoverBot
 		{
 			try
 			{
-				WebSocketFutures.StartPriceStream();
+				//WebSocketFutures.StartPriceStream();
+
+				TelegramBot.Start();
 
 				while(TradeBot.IsValid())
 				{
