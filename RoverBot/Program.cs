@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 
 namespace RoverBot
 {
@@ -6,7 +7,19 @@ namespace RoverBot
 	{
 		public static void Main()
 		{
-			StrategyBuilder.UpdateStrategy("BNBUSDT", 1000.0m, out var trade);
+			try
+			{
+				WebSocketFutures.StartPriceStream();
+
+				while(TradeBot.IsValid())
+				{
+					Thread.Sleep(1000);
+				}
+			}
+			catch(Exception exception)
+			{
+				Logger.Write(exception.Message);
+			}
 		}
 	}
 }

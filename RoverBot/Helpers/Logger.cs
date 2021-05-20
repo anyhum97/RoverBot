@@ -14,16 +14,16 @@ namespace RoverBot
 		
 		private static void Print(string str)
 		{
-			if(IsConsoleEnabled)
+			try
 			{
-				try
+				if(IsConsoleEnabled)
 				{
 					Console.Write(str);
 				}
-				catch
-				{
-					
-				}
+			}
+			catch
+			{
+				
 			}
 		}
 

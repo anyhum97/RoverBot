@@ -25,6 +25,8 @@ namespace RoverBot
 					return true;
 				}
 
+				Logger.Write("UpdateStrategy: Building Model");
+
 				if(LoadHistory(symbol, BufferSize, out var history))
 				{
 					if(ConvertHistory(history, Window, out var bricks))
@@ -33,7 +35,7 @@ namespace RoverBot
 						{
 							TradeParams.Append(symbol + ".txt", trade);
 
-							Logger.Write("UpdateStrategy: Updated");
+							Logger.Write("UpdateStrategy: Ready");
 
 							return true;
 						}
