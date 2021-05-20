@@ -146,21 +146,7 @@ namespace RoverBot
 				return false;
 			}
 		}
-
-		public override string ToString()
-		{
-			try
-			{
-				return string.Format("({0:F2}, {1:F2}, {2}) => {3:F2}", Factor1, Factor2, Stack, Result);
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("TradeParams.ToString: " + exception.Message);
-
-				return "Invalid Format";
-			}
-		}
-
+		
 		private static bool TryParse(string str, out TradeParams trade)
 		{
 			trade = default;
@@ -227,6 +213,54 @@ namespace RoverBot
 				Logger.Write("TradeParams.Format: " + exception.Message);
 
 				return "Invalid Format";
+			}
+		}
+
+		public override string ToString()
+		{
+			try
+			{
+				return string.Format("({0:F2}, {1:F2}, {2}) => {3:F2}", Factor1, Factor2, Stack, Result);
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("TradeParams.ToString: " + exception.Message);
+
+				return "Invalid Format";
+			}
+		}
+
+		public bool IsValid()
+		{
+			try
+			{
+				if(Result <= 0.0m)
+				{
+					return false;
+				}
+
+				if(Factor1 <= 0.0m)
+				{
+					return false;
+				}
+
+				if(Factor2 <= 0.0m)
+				{
+					return false;
+				}
+
+				if(Stack <= 0)
+				{
+					return false;
+				}
+
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("TradeParams.IsValid: " + exception.Message);
+
+				return false;
 			}
 		}
 	}
