@@ -13,12 +13,12 @@ namespace RoverBot
 {
 	public static class TelegramBot
 	{
-		private static readonly TelegramBotClient Client;
-
 		private const string Token = "1817772026:AAHjEtcxB_o048CVGVuJlVaFjgPtPtU9rHo";
 
-		private static List<long> ChatList = default;
+		private static readonly TelegramBotClient Client = default;
 
+		private static readonly List<long> ChatList = default;
+		
 		static TelegramBot()
 		{
 			try
@@ -93,7 +93,7 @@ namespace RoverBot
 			}
 		}
 
-		public static void Send(string str, int chatId)
+		private static void Send(string str, int chatId)
 		{
 			if(IsValid())
 			{

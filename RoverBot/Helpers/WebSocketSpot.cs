@@ -17,7 +17,7 @@ using Timer = System.Timers.Timer;
 
 namespace RoverBot
 {
-	public class WebSocketFutures
+	public static class WebSocketSpot
 	{
 		private static string Symbol = TradeBot.Symbol;
 
@@ -110,7 +110,7 @@ namespace RoverBot
 
 		#endregion
 
-		static WebSocketFutures()
+		static WebSocketSpot()
 		{
 			try
 			{
@@ -118,7 +118,7 @@ namespace RoverBot
 			}
 			catch(Exception exception)
 			{
-				Logger.Write("WebSocketFutures: " + exception.Message);
+				Logger.Write("WebSocketSpot: " + exception.Message);
 			}
 		}
 
@@ -414,8 +414,6 @@ namespace RoverBot
 				{
 					bool flag = false;
 
-					Logger.Write(string.Format("LoadHistory: {0}/{1}", i, pages));
-
 					for(int j=0; j<attempts; ++j)
 					{
 						var responce = client.Spot.Market.GetKlines(symbol, KlineInterval.OneMinute, startTime, limit:pageSize);
@@ -426,7 +424,10 @@ namespace RoverBot
 							
 							foreach(var record in responce.Data)
 							{
-								history.Add(new Candle(record.CloseTime.ToLocalTime(), record.Open, record.Close, record.Low, record.High));
+								if(record.CloseTime.ToLocalTime() < DateTime.Now)
+								{
+									history.Add(new Candle(record.CloseTime.ToLocalTime(), record.Open, record.Close, record.Low, record.High));
+								}
 							}
 
 							flag = true;
@@ -461,7 +462,10 @@ namespace RoverBot
 							
 							foreach(var record in responce.Data)
 							{
-								history.Add(new Candle(record.CloseTime.ToLocalTime(), record.Open, record.Close, record.Low, record.High));
+								if(record.CloseTime.ToLocalTime() < DateTime.Now)
+								{
+									history.Add(new Candle(record.CloseTime.ToLocalTime(), record.Open, record.Close, record.Low, record.High));
+								}
 							}
 
 							flag = true;
@@ -480,11 +484,6 @@ namespace RoverBot
 					{
 						return false;
 					}
-				}
-
-				if(pages > 0)
-				{
-					Logger.Write(string.Format("LoadHistory: Ready"));
 				}
 
 				return true;
