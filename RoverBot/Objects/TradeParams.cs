@@ -59,10 +59,6 @@ namespace RoverBot
 					{
 						history.Add(trade);
 					}
-					else
-					{
-						return false;
-					}
 				}
 
 				return true;
@@ -85,10 +81,7 @@ namespace RoverBot
 				{
 					stringBuilder.Append(history[i].Format());
 
-					if(i < history.Count - 1)
-					{
-						stringBuilder.Append("\n");
-					}
+					stringBuilder.Append("\n");
 				}
 				
 				File.WriteAllText(path, stringBuilder.ToString());
@@ -113,10 +106,7 @@ namespace RoverBot
 				{
 					stringBuilder.Append(history[i].Format());
 
-					if(i < history.Count - 1)
-					{
-						stringBuilder.Append("\n");
-					}
+					stringBuilder.Append("\n");
 				}
 				
 				File.AppendAllText(path, stringBuilder.ToString());
@@ -135,7 +125,7 @@ namespace RoverBot
 		{
 			try
 			{
-				File.AppendAllText(path, trade.Format());
+				File.AppendAllText(path, trade.Format() + "\n");
 
 				return true;
 			}

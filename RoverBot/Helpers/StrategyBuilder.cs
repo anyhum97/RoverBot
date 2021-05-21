@@ -321,7 +321,7 @@ namespace RoverBot
 			}
 			catch(Exception exception)
 			{
-				Logger.Write("BuildStrategy: " + exception.Message);
+				Logger.Write("StrategyBuilder.BuildStrategy: " + exception.Message);
 
 				return false;
 			}
