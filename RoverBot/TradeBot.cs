@@ -29,7 +29,7 @@ namespace RoverBot
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.224";
+		public const string Version = "0.443";
 
 		public static string Symbol = Currency2 + Currency1;
 		
@@ -61,6 +61,8 @@ namespace RoverBot
 
 		public static List<SellOrder> SellOrders = default;
 
+		private static DateTime LastRatioPrinted = default;
+
 		private static BinanceClient Client = default;
 
 		private static TradeParams Trade = default;
@@ -72,6 +74,8 @@ namespace RoverBot
 		private static decimal Average = default;
 
 		private static decimal Deviation = default;
+
+		private static bool HistoryLock = default;
 
 		private static bool Ready = true;
 
@@ -232,7 +236,10 @@ namespace RoverBot
 			{
 				if(IsValid())
 				{
-					UpdateStandartDeviation();
+					if(UpdateStandartDeviation())
+					{
+						HistoryLock = default;
+					}
 				}
 			}
 			catch(Exception exception)
@@ -252,7 +259,7 @@ namespace RoverBot
 						return;
 					}
 
-					decimal price = WebSocketSpot.CurrentPrice;
+					decimal price = 1.0006m*WebSocketSpot.CurrentPrice;
 
 					if(price < Average)
 					{
@@ -260,6 +267,13 @@ namespace RoverBot
 
 						decimal ratio = delta / Deviation;
 
+						if(LastRatioPrinted.AddSeconds(1.0) <= DateTime.Now)
+						{
+							Console.WriteLine(ratio);
+
+							LastRatioPrinted = DateTime.Now;
+						}
+						
 						if(ratio >= Trade.Factor1)
 						{
 							decimal sellPrice = price + Trade.Factor2 * Deviation;
@@ -272,7 +286,13 @@ namespace RoverBot
 								{
 									if(Balance1 >= x*10.0m)
 									{
-										Buy(x, price, sellPrice);
+										if(HistoryLock == false)
+										{
+											if(Buy(x, price, sellPrice))
+											{
+												HistoryLock = true;
+											}
+										}
 									}
 								}
 
@@ -322,121 +342,131 @@ namespace RoverBot
 
 		public static bool Buy(decimal stack, decimal price, decimal sellPrice)
 		{
-			if(IsValid())
+			try
 			{
-				Logger.Write(CheckLine);
-
-				Logger.Write("Buy: Stack = " + Format(stack, 2));
-
-				if(stack < 1.0m)
+				if(IsValid())
 				{
-					Logger.Write("Buy: Stack < 1.0");
-					
 					Logger.Write(CheckLine);
 
-					return false;
-				}
-				
-				if(price <= 0.0m)
-				{
-					Logger.Write("Buy: Price <= 0.0");
-					
-					Logger.Write(CheckLine);
+					Logger.Write("Buy: Stack = " + Format(stack, 2));
 
-					return false;
-				}
-				
-				if(sellPrice <= price)
-				{
-					Logger.Write("Buy: SellPrice <= Price");
-					
-					Logger.Write(CheckLine);
-
-					return false;
-				}
-
-				decimal sellFactor = (sellPrice-price)/price;
-
-				decimal volume = MinNotional*stack/price;
-				
-				decimal notional = 0.0m;
-
-				if(PlaceBuyOrder(ref volume, ref price, ref notional, out long buyId))
-				{
-					for(int i=0; i<3; ++i)
+					if(stack < 1.0m)
 					{
-						if(PlaceSellOrder(ref volume, ref sellPrice, ref notional, out long sellOrderId))
-						{
-							StringBuilder stringBuilder = new StringBuilder();
+						Logger.Write("Buy: Stack < 1.0");
+					
+						Logger.Write(CheckLine);
 
-							stringBuilder.Append("Я купил ");
-							stringBuilder.Append(Format(volume, 2));
-							stringBuilder.Append(" монеты ");
-							stringBuilder.Append(Currency2);
-							stringBuilder.Append(" по цене ");
-							stringBuilder.Append(Format(price, 4));
-							stringBuilder.Append(" и установил наценку в ");
-							stringBuilder.Append(Format(100.0m*(sellFactor - 1.0m), 2));
-							stringBuilder.Append("%");
-							
-							TelegramBot.Send(stringBuilder.ToString());
-
-							UpdateBalance();
-
-							Logger.Write("Buy: Success");
-
-							Logger.Write(CheckLine);
-
-							return true;
-						}
+						return false;
 					}
 					
-					StringBuilder sellOrderError = new StringBuilder();
+					if(price <= 0.0m)
+					{
+						Logger.Write("Buy: Price <= 0.0");
+					
+						Logger.Write(CheckLine);
 
-					sellOrderError.Append("Я купил ");
-					sellOrderError.Append(Format(volume, 2));
-					sellOrderError.Append(" монеты ");
-					sellOrderError.Append(Currency2);
-					sellOrderError.Append(" по цене ");
-					sellOrderError.Append(Format(price, 4));
-					sellOrderError.Append(", но мне не удалось выставить ордер на продажу.\n\n");
-					sellOrderError.Append("Цена продажи: ");
-					sellOrderError.Append(Format(sellPrice, 4));
+						return false;
+					}
+					
+					if(sellPrice <= price)
+					{
+						Logger.Write("Buy: SellPrice <= Price");
+					
+						Logger.Write(CheckLine);
 
-					TelegramBot.Send(sellOrderError.ToString());
+						return false;
+					}
 
-					UpdateBalance();
+					decimal sellFactor = (sellPrice-price)/price;
 
-					Logger.Write("Buy: Can Not Place Sell Order");
+					decimal volume = MinNotional*stack/price;
+					
+					decimal notional = 0.0m;
 
-					Logger.Write(CheckLine);
+					if(PlaceBuyOrder(ref volume, ref price, ref notional, out long buyId))
+					{
+						for(int i=0; i<3; ++i)
+						{
+							if(PlaceSellOrder(ref volume, ref sellPrice, ref notional, out long sellOrderId))
+							{
+								StringBuilder stringBuilder = new StringBuilder();
 
-					return false;
+								stringBuilder.Append("Я купил ");
+								stringBuilder.Append(Format(volume, 2));
+								stringBuilder.Append(" монеты ");
+								stringBuilder.Append(Currency2);
+								stringBuilder.Append(" по цене ");
+								stringBuilder.Append(Format(price, 4));
+								stringBuilder.Append(" и установил наценку в ");
+								stringBuilder.Append(Format(100.0m*(sellFactor - 1.0m), 2));
+								stringBuilder.Append("%");
+								
+								TelegramBot.Send(stringBuilder.ToString());
+
+								Logger.Write("Buy: Success");
+
+								Logger.Write(CheckLine);
+
+								UpdateBalance();
+
+								return true;
+							}
+						}
+						
+						StringBuilder sellOrderError = new StringBuilder();
+
+						sellOrderError.Append("Я купил ");
+						sellOrderError.Append(Format(volume, 2));
+						sellOrderError.Append(" монеты ");
+						sellOrderError.Append(Currency2);
+						sellOrderError.Append(" по цене ");
+						sellOrderError.Append(Format(price, 4));
+						sellOrderError.Append(", но мне не удалось выставить ордер на продажу.\n\n");
+						sellOrderError.Append("Цена продажи: ");
+
+						sellOrderError.Append(Format(sellPrice, 4));
+
+						TelegramBot.Send(sellOrderError.ToString());
+
+						Logger.Write("Buy: Can Not Place Sell Order");
+
+						Logger.Write(CheckLine);
+
+						UpdateBalance();
+
+						return false;
+					}
+					else
+					{
+						Logger.Write("Buy: Can Not Place Buy Order");
+						
+						Logger.Write(CheckLine);
+
+						return false;
+					}
 				}
 				else
 				{
-					Logger.Write("Buy: Can Not Place Buy Order");
-					
-					Logger.Write(CheckLine);
+					Logger.Write("Buy: Invalid Account");
 
 					return false;
 				}
 			}
-			else
+			catch(Exception exception)
 			{
-				Logger.Write("Buy: Invalid Account");
-
+				Logger.Write("Buy: " + exception.Message);
+				
 				return false;
 			}
 		}
 
 		private static bool PlaceBuyOrder(ref decimal volume, ref decimal price, ref decimal notional, out long orderId)
 		{
-			orderId = 0;
+			orderId = default;
 
-			if(IsValid())
+			try
 			{
-				try
+				if(IsValid())
 				{
 					if(ValidateTradeParams(ref volume, ref price, ref notional))
 					{
@@ -491,6 +521,7 @@ namespace RoverBot
 							errorLog.Append(Point(notional));
 
 							errorLog.Append(", Error = ");
+
 							errorLog.Append(request.Error.Message);
 
 							Logger.Write(errorLog.ToString());
@@ -505,42 +536,42 @@ namespace RoverBot
 						return false;
 					}
 				}
-				catch(Exception exception)
+				else
 				{
-					StringBuilder exceptionLog = new StringBuilder();
-
-					exceptionLog.Append("PlaceBuyOrder: Volume = ");
-					exceptionLog.Append(Point(volume));
-					exceptionLog.Append(" " + Currency2);
-
-					exceptionLog.Append(", Price = ");
-					exceptionLog.Append(Point(price));
-					exceptionLog.Append(" " + Currency1);
-
-					exceptionLog.Append(", Exception = ");
-
-					exceptionLog.Append(exception.Message);
-
-					Logger.Write(exceptionLog.ToString());
+					Logger.Write("PlaceBuyOrder: Invalid Account");
 
 					return false;
 				}
 			}
-			else
+			catch(Exception exception)
 			{
-				Logger.Write("PlaceBuyOrder: Invalid Account");
-
+				StringBuilder exceptionLog = new StringBuilder();
+				
+				exceptionLog.Append("PlaceBuyOrder: Volume = ");
+				exceptionLog.Append(Point(volume));
+				exceptionLog.Append(" " + Currency2);
+				
+				exceptionLog.Append(", Price = ");
+				exceptionLog.Append(Point(price));
+				exceptionLog.Append(" " + Currency1);
+				
+				exceptionLog.Append(", Exception = ");
+				
+				exceptionLog.Append(exception.Message);
+				
+				Logger.Write(exceptionLog.ToString());
+				
 				return false;
 			}
 		}
 
 		private static bool PlaceSellOrder(ref decimal volume, ref decimal price, ref decimal notional, out long orderId)
 		{
-			orderId = 0;
+			orderId = default;
 
-			if(IsValid())
+			try
 			{
-				try
+				if(IsValid())
 				{
 					if(ValidateTradeParams(ref volume, ref price, ref notional))
 					{
@@ -614,30 +645,30 @@ namespace RoverBot
 						return false;
 					}
 				}
-				catch(Exception exception)
+				else
 				{
-					StringBuilder exceptionLog = new StringBuilder();
-
-					exceptionLog.Append("PlaceSellOrder: Volume = ");
-					exceptionLog.Append(Point(volume));
-					exceptionLog.Append(" " + Currency2);
-
-					exceptionLog.Append(", Price = ");
-					exceptionLog.Append(Point(price));
-					exceptionLog.Append(" " + Currency1);
-
-					exceptionLog.Append(", Exception = ");
-					exceptionLog.Append(exception.Message);
-
-					Logger.Write(exceptionLog.ToString());
+					Logger.Write("PlaceSellOrder: Invalid Account");
 
 					return false;
 				}
 			}
-			else
+			catch(Exception exception)
 			{
-				Logger.Write("PlaceSellOrder: Invalid Account");
-
+				StringBuilder exceptionLog = new StringBuilder();
+				
+				exceptionLog.Append("PlaceSellOrder: Volume = ");
+				exceptionLog.Append(Point(volume));
+				exceptionLog.Append(" " + Currency2);
+				
+				exceptionLog.Append(", Price = ");
+				exceptionLog.Append(Point(price));
+				exceptionLog.Append(" " + Currency1);
+				
+				exceptionLog.Append(", Exception = ");
+				exceptionLog.Append(exception.Message);
+				
+				Logger.Write(exceptionLog.ToString());
+				
 				return false;
 			}
 		}
