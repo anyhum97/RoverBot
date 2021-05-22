@@ -10,7 +10,7 @@ namespace RoverBot
 {
 	public static class StrategyBuilder
 	{
-		private const decimal DefaultBalance = 1000.0m;
+		private const decimal DefaultBalance = 100.0m;
 
 		private const int BufferSize = 11280;
 
@@ -252,7 +252,7 @@ namespace RoverBot
 				{
 					for(decimal factor2 = 1.0m; factor2 <= 6.0m; factor2 = factor2 + 0.1m)
 					{
-						for(int stack=10; stack<=100; stack=stack+10)
+						for(int stack=10; stack<=200; stack=stack+10)
 						{
 							if(Evolve(history, balance, factor1, factor2, stack, out decimal total))
 							{
@@ -275,7 +275,9 @@ namespace RoverBot
 
 				int value3 = default;
 				
-				for(int i=0; i<Math.Min(scores.Count, 4); ++i)
+				int count = Math.Min(scores.Count, 4);
+
+				for(int i=0; i<count; ++i)
 				{
 					decimal start1 = scores[i].Factor1 - 0.1m;
 
@@ -321,7 +323,7 @@ namespace RoverBot
 				}
 				else
 				{
-					Logger.Write("BuildStrategy: Can Not Find Profitable Strategy");
+					Logger.Write("BuildStrategy: Invalid Strategy");
 
 					return false;
 				}

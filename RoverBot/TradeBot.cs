@@ -29,7 +29,7 @@ namespace RoverBot
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.449";
+		public const string Version = "0.453";
 
 		public static string Symbol = Currency2 + Currency1;
 		
@@ -119,6 +119,8 @@ namespace RoverBot
 							}
 						}
 					}
+
+					Thread.Sleep(10000);
 				}
 
 				WebSocketSpot.HistoryUpdated += OnHistoryUpdated;
@@ -485,7 +487,12 @@ namespace RoverBot
 			{
 				if(IsValid())
 				{
-					if(Average == default || Deviation == default)
+					if(Average == default)
+					{
+						return;
+					}
+
+					if(Deviation <= PricePrecision)
 					{
 						return;
 					}
