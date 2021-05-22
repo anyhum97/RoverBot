@@ -11,6 +11,8 @@ namespace RoverBot
 			{
 				TradeBot.Start();
 
+				Thread.Sleep(1000);
+
 				while(TradeBot.IsValid())
 				{
 					Thread.Sleep(1000);

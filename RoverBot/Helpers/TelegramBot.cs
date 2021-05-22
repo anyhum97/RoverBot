@@ -18,7 +18,7 @@ namespace RoverBot
 		private static readonly TelegramBotClient Client = default;
 
 		private static readonly List<long> ChatList = default;
-		
+
 		static TelegramBot()
 		{
 			try
@@ -206,7 +206,7 @@ namespace RoverBot
 						stringBuilder.Append("\n\n");
 					}
 
-					stringBuilder.Append("Текущая цена: " + Format(WebSocketSpot.CurrentPrice, 2));
+					stringBuilder.Append("Текущая цена: " + Format(WebSocketSpot.CurrentPrice, TradeBot.PricePrecision));
 
 					Send(chatId, stringBuilder.ToString());
 
@@ -219,21 +219,21 @@ namespace RoverBot
 
 					stringBuilder.Append("Balance: ");
 
-					stringBuilder.Append(Format(TradeBot.Balance1, 4));
+					stringBuilder.Append(Format(TradeBot.Balance1, TradeBot.CurrencyPrecision1));
 					stringBuilder.Append(" ");
 					stringBuilder.Append(TradeBot.Currency1);
 					stringBuilder.Append(", ");
 
-					stringBuilder.Append(Format(TradeBot.Balance2, 6));
+					stringBuilder.Append(Format(TradeBot.Balance2, TradeBot.CurrencyPrecision2));
 					stringBuilder.Append(" ");
 					stringBuilder.Append(TradeBot.Currency2);
 
 					stringBuilder.Append(", ");
-					stringBuilder.Append(Format(TradeBot.FeeCoins, 4));
+					stringBuilder.Append(Format(TradeBot.FeeCoins, TradeBot.CurrencyPrecision3));
 					stringBuilder.Append(" BNB");
 
 					stringBuilder.Append(", Total: ");
-					stringBuilder.Append(Format(TradeBot.TotalBalance, 2));
+					stringBuilder.Append(Format(TradeBot.TotalBalance, TradeBot.CurrencyPrecision1));
 					stringBuilder.Append(" USDT");
 					
 					Send(chatId, stringBuilder.ToString());

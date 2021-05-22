@@ -21,15 +21,15 @@ namespace RoverBot
 	{
 		public const string CheckLine = "******************************************************************************";
 
-		public const string ApiKey = "RuqJRpQ62CErjxJp7OTwShtiFFFS8mdsSPOTgtKXFWUr6lBeqk0T0UA4B463pttL";
+		public const string ApiKey = "LF6LgLNhFZcMPRkasacEsmc7fQJ4qRydCVakhf99V76IIH4cMER1QNTSLHa2aPqt";
 
-		public const string SecretKey = "BrBD2UJbYdxUxCBsRFGqV9zK6HLZHQjbHtKEoME7LByXYgGzlrD7oHsf9zWUGkLL";
+		public const string SecretKey = "7OMVQjWx7IVqmQ33Uuc01o4X8DNMUdUO22EwkGj0q70KVjjr2xV45WivqaTYohDq";
 
 		public const string Currency1 = "USDT";
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.447";
+		public const string Version = "0.449";
 
 		public static string Symbol = Currency2 + Currency1;
 		
@@ -41,12 +41,18 @@ namespace RoverBot
 		
 		public const decimal StepSize = 0.000001m;
 
+		public const int CurrencyPrecision1 = 2;
+
+		public const int CurrencyPrecision2 = 6;
+
+		public const int CurrencyPrecision3 = 6;
+
 		public const int NotionalPrecision = 4;
 
 		public const int PricePrecision = 2;
 
 		public const int VolumePrecision = 6;
-		
+
 		public static List<SellOrder> SellOrders { get; private set; } = default;
 
 		public static decimal Balance1 { get; private set; } = default;
@@ -54,8 +60,6 @@ namespace RoverBot
 		public static decimal Balance2 { get; private set; } = default;
 
 		public static decimal TotalBalance { get; private set; } = default;
-
-		public static decimal Frozen { get; private set; } = default;
 
 		public static decimal FeeCoins { get; private set; } = default;
 
@@ -157,7 +161,7 @@ namespace RoverBot
 			}
 		}
 
-		public static bool UpdateBalance()
+		private static bool UpdateBalance()
 		{
 			try
 			{
@@ -262,21 +266,21 @@ namespace RoverBot
 
 								stringBuilder.Append("UpdateBalance: ");
 
-								stringBuilder.Append(Format(Balance1, 4));
+								stringBuilder.Append(Format(Balance1, CurrencyPrecision1));
 								stringBuilder.Append(" ");
 								stringBuilder.Append(Currency1);
 								stringBuilder.Append(", ");
 
-								stringBuilder.Append(Format(Balance2, 6));
+								stringBuilder.Append(Format(Balance2, CurrencyPrecision2));
 								stringBuilder.Append(" ");
 								stringBuilder.Append(Currency2);
 
 								stringBuilder.Append(", ");
-								stringBuilder.Append(Format(FeeCoins, 4));
+								stringBuilder.Append(Format(FeeCoins, CurrencyPrecision3));
 								stringBuilder.Append(" BNB");
 
 								stringBuilder.Append(", Total = ");
-								stringBuilder.Append(Format(TotalBalance, 2));
+								stringBuilder.Append(Format(TotalBalance, CurrencyPrecision1));
 								stringBuilder.Append(" USDT");
 
 								if(FeeCoins < 0.01m)
@@ -308,7 +312,7 @@ namespace RoverBot
 			}
 		}
 
-		public static bool UpdateСurrencyInfo()
+		private static bool UpdateСurrencyInfo()
 		{
 			if(IsValid())
 			{
@@ -326,7 +330,7 @@ namespace RoverBot
 							}
 						}
 						
-						Logger.Write("UpdateСurrencyInfo: Can Not Find Symbol");
+						Logger.Write("UpdateСurrencyInfo: Invalid Symbol");
 
 						return false;
 					}
@@ -425,7 +429,7 @@ namespace RoverBot
 			}
 		}
 
-		public static bool UpdateStandartDeviation()
+		private static bool UpdateStandartDeviation()
 		{
 			try
 			{
@@ -596,13 +600,13 @@ namespace RoverBot
 								StringBuilder stringBuilder = new StringBuilder();
 
 								stringBuilder.Append("Я купил ");
-								stringBuilder.Append(Format(volume, 2));
+								stringBuilder.Append(Format(volume, VolumePrecision));
 								stringBuilder.Append(" монеты ");
 								stringBuilder.Append(Currency2);
 								stringBuilder.Append(" по цене ");
-								stringBuilder.Append(Format(price, 4));
+								stringBuilder.Append(Format(price, PricePrecision));
 								stringBuilder.Append(" и установил наценку в ");
-								stringBuilder.Append(Format(100.0m*(sellFactor - 1.0m), 2));
+								stringBuilder.Append(Format(sellFactor, 3));
 								stringBuilder.Append("%");
 								
 								TelegramBot.Send(stringBuilder.ToString());
@@ -622,15 +626,15 @@ namespace RoverBot
 						StringBuilder sellOrderError = new StringBuilder();
 
 						sellOrderError.Append("Я купил ");
-						sellOrderError.Append(Format(volume, 2));
+						sellOrderError.Append(Format(volume, VolumePrecision));
 						sellOrderError.Append(" монеты ");
 						sellOrderError.Append(Currency2);
 						sellOrderError.Append(" по цене ");
-						sellOrderError.Append(Format(price, 4));
+						sellOrderError.Append(Format(price, PricePrecision));
 						sellOrderError.Append(", но мне не удалось выставить ордер на продажу.\n\n");
 						sellOrderError.Append("Цена продажи: ");
 
-						sellOrderError.Append(Format(sellPrice, 4));
+						sellOrderError.Append(Format(sellPrice, PricePrecision));
 
 						TelegramBot.Send(sellOrderError.ToString());
 
@@ -1018,6 +1022,8 @@ namespace RoverBot
 
 					if(response.Success)
 					{
+						bool update = default;
+
 						foreach(var order in response.Data)
 						{
 							if(order.Side == OrderSide.Sell)
@@ -1054,6 +1060,8 @@ namespace RoverBot
 											Logger.Write("Sell Order #" + order.OrderId + " Was Filled");
 
 											TelegramBot.Send(SellOrders[index].Filled());
+
+											update = true;
 										}
 										else
 										{
@@ -1066,6 +1074,11 @@ namespace RoverBot
 							}
 						}
 						
+						if(update == false)
+						{
+							UpdateFeePrice();
+						}
+
 						return true;
 					}
 					else
@@ -1089,7 +1102,7 @@ namespace RoverBot
 				return false;
 			}
 		}
-				
+		
 		private static bool UpdateFeePrice()
 		{
 			try

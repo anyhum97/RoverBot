@@ -34,11 +34,15 @@ namespace RoverBot
 			{
 				StringBuilder stringBuilder = new StringBuilder();
 
-				stringBuilder.Append(Format(Volume, 6));
+				stringBuilder.Append(Format(Volume, TradeBot.VolumePrecision));
+
 				stringBuilder.Append(" монеты ");
+
 				stringBuilder.Append(TradeBot.Currency2);
+
 				stringBuilder.Append(" ожидают продажи по цене ");
-				stringBuilder.Append(Format(Price, 2));
+
+				stringBuilder.Append(Format(Price, TradeBot.PricePrecision));
 
 				return stringBuilder.ToString();
 			}
@@ -56,11 +60,15 @@ namespace RoverBot
 			{
 				StringBuilder stringBuilder = new StringBuilder();
 
-				stringBuilder.Append(Format(Volume, 6));
+				stringBuilder.Append(Format(Volume, TradeBot.VolumePrecision));
+
 				stringBuilder.Append(" монеты ");
+
 				stringBuilder.Append(TradeBot.Currency2);
+
 				stringBuilder.Append(" были проданы по цене ");
-				stringBuilder.Append(Format(Price, 2));
+
+				stringBuilder.Append(Format(Price, TradeBot.PricePrecision));
 
 				return stringBuilder.ToString();
 			}
