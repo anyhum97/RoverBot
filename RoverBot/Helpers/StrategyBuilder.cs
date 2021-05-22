@@ -10,6 +10,8 @@ namespace RoverBot
 {
 	public static class StrategyBuilder
 	{
+		private const decimal DefaultBalance = 1000.0m;
+
 		private const int BufferSize = 11280;
 
 		private const int Window = 1200;
@@ -26,6 +28,11 @@ namespace RoverBot
 				}
 
 				Logger.Write("UpdateStrategy: Building Model");
+
+				if(balance < TradeBot.MinNotional)
+				{
+					balance = DefaultBalance;
+				}
 
 				if(LoadHistory(symbol, BufferSize, out var history))
 				{

@@ -30,6 +30,8 @@ namespace RoverBot
 				ChatList = new List<long>();
 
 				ChatList.Add(614503016);
+
+				ChatList.Add(768427512);
 			}
 			catch(Exception exception)
 			{
@@ -160,6 +162,57 @@ namespace RoverBot
 					return;
 				}
 				
+				if(str.Contains("order") || str == "o")
+				{
+					int count = TradeBot.SellOrders.Count;
+
+					if(count == 0)
+					{
+						Send(chatId, "Нет открытых ордеров");
+
+						return;
+					}
+					
+					StringBuilder stringBuilder = new StringBuilder();
+					
+					const int window = 16;
+
+					for(int i=0; i<count && i<window; ++i)
+					{
+						stringBuilder.Append(TradeBot.SellOrders[i].Format());
+
+						stringBuilder.Append("\n\n");
+					}
+
+					if(count > window)
+					{
+						if(count-window <= 4)
+						{
+							switch(count-window)
+							{
+								case 1: stringBuilder.Append("И ещё 1 ордер..."); break;
+								case 2: stringBuilder.Append("И ещё 2 ордера..."); break;
+								case 3: stringBuilder.Append("И ещё 3 ордера..."); break;
+								case 4: stringBuilder.Append("И ещё 4 ордера..."); break;
+							}
+						}
+						else
+						{
+							stringBuilder.Append("И ещё ");
+							stringBuilder.Append(count-window);
+							stringBuilder.Append("ордеров...");
+						}
+
+						stringBuilder.Append("\n\n");
+					}
+
+					stringBuilder.Append("Текущая цена: " + Format(WebSocketSpot.CurrentPrice, 2));
+
+					Send(chatId, stringBuilder.ToString());
+
+					return;
+				}
+
 				if(str.Contains("balance") || str == "b")
 				{
 					StringBuilder stringBuilder = new StringBuilder();
@@ -175,12 +228,9 @@ namespace RoverBot
 					stringBuilder.Append(" ");
 					stringBuilder.Append(TradeBot.Currency2);
 
-					if(TradeBot.Currency2 != "BNB")
-					{
-						stringBuilder.Append(", ");
-						stringBuilder.Append(Format(TradeBot.FeeCoins, 4));
-						stringBuilder.Append(" BNB");
-					}
+					stringBuilder.Append(", ");
+					stringBuilder.Append(Format(TradeBot.FeeCoins, 4));
+					stringBuilder.Append(" BNB");
 
 					stringBuilder.Append(", Total: ");
 					stringBuilder.Append(Format(TradeBot.TotalBalance, 2));

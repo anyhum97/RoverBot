@@ -38,7 +38,7 @@ namespace RoverBot
 				stringBuilder.Append(" монеты ");
 				stringBuilder.Append(TradeBot.Currency2);
 				stringBuilder.Append(" ожидают продажи по цене ");
-				stringBuilder.Append(Format(Price, 4));
+				stringBuilder.Append(Format(Price, 2));
 
 				return stringBuilder.ToString();
 			}
@@ -60,7 +60,7 @@ namespace RoverBot
 				stringBuilder.Append(" монеты ");
 				stringBuilder.Append(TradeBot.Currency2);
 				stringBuilder.Append(" были проданы по цене ");
-				stringBuilder.Append(Format(Price, 4));
+				stringBuilder.Append(Format(Price, 2));
 
 				return stringBuilder.ToString();
 			}
