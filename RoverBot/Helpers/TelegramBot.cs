@@ -146,18 +146,32 @@ namespace RoverBot
 
 				if(str == "start")
 				{
-					TradeBot.IsTrading = true;
-					
-					Send("Торговля включена");
-					
+					if(TradeBot.IsTrading == false)
+					{
+						TradeBot.IsTrading = true;
+						
+						Send("Торговля включена");
+					}
+					else
+					{
+						Send(chatId, "Торговля включена");
+					}
+
 					return;
 				}
 				
 				if(str == "stop")
 				{
-					TradeBot.IsTrading = false;
-					
-					Send("Торговля отключена");
+					if(TradeBot.IsTrading == true)
+					{
+						TradeBot.IsTrading = false;
+						
+						Send("Торговля отключена");
+					}
+					else
+					{
+						Send(chatId, "Торговля отключена");
+					}
 					
 					return;
 				}

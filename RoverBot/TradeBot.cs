@@ -29,7 +29,7 @@ namespace RoverBot
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.453";
+		public const string Version = "0.455";
 
 		public static string Symbol = Currency2 + Currency1;
 		
@@ -382,9 +382,9 @@ namespace RoverBot
 			{
 				InternalTimer2 = new Timer();
 
-				InternalTimer2.Interval = 3600000;
+				InternalTimer2.Interval = 1200000;
 
-				InternalTimer2.Elapsed += InternalTimerElapsed1;
+				InternalTimer2.Elapsed += InternalTimerElapsed2;
 
 				InternalTimer2.Start();
 			}

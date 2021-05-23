@@ -10,7 +10,7 @@ namespace RoverBot
 {
 	public static class StrategyBuilder
 	{
-		private const decimal DefaultBalance = 100.0m;
+		private const decimal DefaultBalance = 200.0m;
 
 		private const int BufferSize = 11280;
 
