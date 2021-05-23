@@ -29,7 +29,7 @@ namespace RoverBot
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.456";
+		public const string Version = "0.457";
 
 		public static string Symbol = Currency2 + Currency1;
 		
@@ -60,6 +60,8 @@ namespace RoverBot
 		public static decimal Balance2 { get; private set; } = default;
 
 		public static decimal TotalBalance { get; private set; } = default;
+
+		public static decimal WorkingBalance { get; private set; } = default;
 
 		public static decimal FeeCoins { get; private set; } = default;
 
@@ -109,7 +111,7 @@ namespace RoverBot
 					{
 						if(UpdateBalance())
 						{
-							if(StrategyBuilder.UpdateStrategy(Symbol, TotalBalance, out var trade))
+							if(StrategyBuilder.UpdateStrategy(Symbol, WorkingBalance, out var trade))
 							{
 								IsTrading = true;
 
@@ -261,6 +263,8 @@ namespace RoverBot
 						if(find1 && find2 && find3)
 						{
 							TotalBalance = total1 + total2*price + FeeCoins*FeePrice;
+
+							WorkingBalance = total1 + total2*price;
 
 							if(updated1 || updated2 || updated3)
 							{
@@ -419,7 +423,7 @@ namespace RoverBot
 				{
 					UpdateFeePrice();
 
-					if(StrategyBuilder.UpdateStrategy(Symbol, TotalBalance, out var trade))
+					if(StrategyBuilder.UpdateStrategy(Symbol, WorkingBalance, out var trade))
 					{
 						TelegramBot.Send("Торговля возобновлена");
 
@@ -517,14 +521,14 @@ namespace RoverBot
 
 						if(LastRatioPrinted.AddSeconds(1.0) <= DateTime.Now)
 						{
-							Console.WriteLine(Format(ratio, 4));
+							Console.WriteLine(string.Format("{0} | {1}", Format(ratio, 4), Format(Trade.Factor1, 4)));
 
 							LastRatioPrinted = DateTime.Now;
 						}
 						
 						if(ratio >= Trade.Factor1)
 						{
-							Logger.Write("Entry Point on Price " + Format(price, PricePrecision) + " Detected (Ratio: " + ratio + ")");
+							Logger.Write("Entry Point on Price " + Format(price, PricePrecision) + " Detected (Ratio: " + Format(ratio, 2) + ")");
 						}
 
 						if(ratio >= Trade.Factor1)
