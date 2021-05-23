@@ -351,7 +351,7 @@ namespace RoverBot
 				for(int i=0; i<history.Count; ++i)
 				{
 					decimal price = history[i].Close;
-				
+					
 					decimal high = history[i].High;
 
 					if(Buy(history, i, balance, factor1, factor2, stack, out int operations, out decimal sellPrice))
@@ -361,9 +361,9 @@ namespace RoverBot
 						if(balance >= notional)
 						{
 							decimal volume = fee*notional/price;
-						
+							
 							list.Add(new Tuple<decimal, decimal, decimal>(volume, price, sellPrice));
-						
+							
 							balance = balance - notional;
 						}
 					}

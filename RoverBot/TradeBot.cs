@@ -29,7 +29,7 @@ namespace RoverBot
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.455";
+		public const string Version = "0.456";
 
 		public static string Symbol = Currency2 + Currency1;
 		
@@ -421,7 +421,17 @@ namespace RoverBot
 
 					if(StrategyBuilder.UpdateStrategy(Symbol, TotalBalance, out var trade))
 					{
+						TelegramBot.Send("Торговля возобновлена");
+
+						IsTrading = true;
+
 						Trade = trade;
+					}
+					else
+					{
+						TelegramBot.Send("Не удалось разработать подходящую стратегию");
+
+						IsTrading = false;
 					}
 				});
 			}
@@ -1149,7 +1159,7 @@ namespace RoverBot
 			catch(Exception exception)
 			{
 				Logger.Write("Format: " + exception.Message);
-			
+				
 				return "Invalid Format";
 			}
 		}
@@ -1163,7 +1173,7 @@ namespace RoverBot
 			catch(Exception exception)
 			{
 				Logger.Write("Point: " + exception.Message);
-			
+				
 				return "Invalid Format";
 			}
 		}
