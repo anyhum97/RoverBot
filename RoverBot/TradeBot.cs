@@ -29,7 +29,7 @@ namespace RoverBot
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.457";
+		public const string Version = "0.4586";
 
 		public static string Symbol = Currency2 + Currency1;
 		
@@ -70,6 +70,8 @@ namespace RoverBot
 		public static bool IsTrading { get; set; } = default;
 
 		private static DateTime LastRatioPrinted = default;
+
+		private static DateTime LastEntryDetected = default;
 
 		private static BinanceClient Client = default;
 
@@ -425,9 +427,12 @@ namespace RoverBot
 
 					if(StrategyBuilder.UpdateStrategy(Symbol, WorkingBalance, out var trade))
 					{
-						TelegramBot.Send("Торговля возобновлена");
-
-						IsTrading = true;
+						if(IsTrading == false)
+						{
+							TelegramBot.Send("Торговля возобновлена");
+							
+							IsTrading = true;
+						}
 
 						Trade = trade;
 					}
@@ -528,7 +533,12 @@ namespace RoverBot
 						
 						if(ratio >= Trade.Factor1)
 						{
-							Logger.Write("Entry Point on Price " + Format(price, PricePrecision) + " Detected (Ratio: " + Format(ratio, 2) + ")");
+							if(LastEntryDetected.AddSeconds(30.0) <= DateTime.Now)
+							{
+								Logger.Write("Entry Point on Price " + Format(price, PricePrecision) + " Detected (Ratio: " + Format(ratio, 2) + ")");
+
+								LastEntryDetected = DateTime.Now;
+							}
 						}
 
 						if(ratio >= Trade.Factor1)
@@ -538,17 +548,17 @@ namespace RoverBot
 							if(IsTrading && Ready)
 							{
 								Ready = false;
-
-								for(int x=Trade.Stack; x>=1; --x)
+								
+								if(HistoryLock == false)
 								{
-									if(Balance1 >= x*10.0m)
+									for(int x=Trade.Stack; x>=1; --x)
 									{
-										if(HistoryLock == false)
+										if(Balance1 >= x*10.0m)
 										{
 											if(Buy(x, price, sellPrice))
 											{
 												HistoryLock = true;
-
+												
 												break;
 											}
 										}
