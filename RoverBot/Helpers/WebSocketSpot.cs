@@ -183,6 +183,13 @@ namespace RoverBot
 					}
 				}
 
+				const int PriceExpiration = 10;
+
+				if(PriceUpdationTime.AddSeconds(PriceExpiration) < DateTime.Now)
+				{
+					return false;
+				}
+
 				return true;
 			}
 			catch(Exception exception)

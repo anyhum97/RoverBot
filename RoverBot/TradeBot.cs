@@ -5,13 +5,14 @@ using System.Threading.Tasks;
 using System.Globalization;
 using System.Timers;
 using System.Text;
-using System.Linq;
 
 using Binance.Net;
 using Binance.Net.Enums;
 using Binance.Net.Objects.Spot.SpotData;
 
 using CryptoExchange.Net.Objects;
+
+using SharpLearning.RandomForest.Models;
 
 using Timer = System.Timers.Timer;
 
@@ -29,7 +30,7 @@ namespace RoverBot
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.4586";
+		public const string Version = "0.675";
 
 		public static string Symbol = Currency2 + Currency1;
 		
@@ -40,6 +41,10 @@ namespace RoverBot
 		public const decimal VolumeFilter = 0.000001m;
 		
 		public const decimal StepSize = 0.000001m;
+
+		public const decimal Percent = 0.02m;
+
+		public const double Threshold = 0.66;
 
 		public const int CurrencyPrecision1 = 2;
 
@@ -69,25 +74,15 @@ namespace RoverBot
 
 		public static bool IsTrading { get; set; } = default;
 
-		private static DateTime LastRatioPrinted = default;
-
-		private static DateTime LastEntryDetected = default;
+		private static ClassificationForestModel TradeModel = default;
 
 		private static BinanceClient Client = default;
-
-		private static TradeParams Trade = default;
 
 		private static Timer InternalTimer1 = default;
 
 		private static Timer InternalTimer2 = default;
 
-		private static decimal Average = default;
-
-		private static decimal Deviation = default;
-
-		private static bool HistoryLock = default;
-
-		private static bool Ready = true;
+		private static Timer InternalTimer3 = default;
 
 		public static void Start()
 		{
@@ -113,27 +108,25 @@ namespace RoverBot
 					{
 						if(UpdateBalance())
 						{
-							if(StrategyBuilder.UpdateStrategy(Symbol, WorkingBalance, out var trade))
+							if(StrategyBuilder.UpdateStrategy(Symbol, out var model))
 							{
 								IsTrading = true;
 
-								Trade = trade;
+								TradeModel = model;
 
 								break;
 							}
 						}
 					}
-
-					Thread.Sleep(10000);
 				}
 
 				WebSocketSpot.HistoryUpdated += OnHistoryUpdated;
 
-				WebSocketSpot.PriceUpdated += OnPriceUpdated;
-
 				StartInternalTimer1();
 
 				StartInternalTimer2();
+
+				StartInternalTimer3();
 			}
 			catch(Exception exception)
 			{
@@ -152,7 +145,7 @@ namespace RoverBot
 					return false;
 				}
 
-				if(Trade == null)
+				if(TradeModel == null)
 				{
 					return false;
 				}
@@ -388,7 +381,7 @@ namespace RoverBot
 			{
 				InternalTimer2 = new Timer();
 
-				InternalTimer2.Interval = 1200000;
+				InternalTimer2.Interval = 600000;
 
 				InternalTimer2.Elapsed += InternalTimerElapsed2;
 
@@ -397,6 +390,24 @@ namespace RoverBot
 			catch(Exception exception)
 			{
 				Logger.Write("StartInternalTimer2: " + exception.Message);
+			}
+		}
+		
+		private static void StartInternalTimer3()
+		{
+			try
+			{
+				InternalTimer3 = new Timer();
+
+				InternalTimer3.Interval = 3600000;
+
+				InternalTimer3.Elapsed += InternalTimerElapsed3;
+
+				InternalTimer3.Start();
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("StartInternalTimer3: " + exception.Message);
 			}
 		}
 
@@ -424,8 +435,21 @@ namespace RoverBot
 				Task.Run(() =>
 				{
 					UpdateFeePrice();
+				});
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("InternalTimerElapsed2: " + exception.Message);
+			}
+		}
 
-					if(StrategyBuilder.UpdateStrategy(Symbol, WorkingBalance, out var trade))
+		private static void InternalTimerElapsed3(object sender, ElapsedEventArgs e)
+		{
+			try
+			{
+				Task.Run(() =>
+				{
+					if(StrategyBuilder.UpdateStrategy(Symbol, out var model))
 					{
 						if(IsTrading == false)
 						{
@@ -434,7 +458,7 @@ namespace RoverBot
 							IsTrading = true;
 						}
 
-						Trade = trade;
+						TradeModel = model;
 					}
 					else
 					{
@@ -446,39 +470,7 @@ namespace RoverBot
 			}
 			catch(Exception exception)
 			{
-				Logger.Write("InternalTimerElapsed2: " + exception.Message);
-			}
-		}
-
-		private static bool UpdateStandartDeviation()
-		{
-			try
-			{
-				List<decimal> list = new List<decimal>();
-
-				foreach(var record in WebSocketSpot.History)
-				{
-					list.Add(record.Close);
-				}
-
-				Average = list.Average();
-
-				decimal value = default;
-
-				foreach(var record in list)
-				{
-					value += (Average - record)*(Average - record);
-				}
-
-				Deviation = (decimal)Math.Sqrt((double)value / (list.Count - 1));
-
-				return true;
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("UpdateStandartDeviation: " + exception.Message);
-
-				return false;
+				Logger.Write("InternalTimerElapsed3: " + exception.Message);
 			}
 		}
 
@@ -488,9 +480,98 @@ namespace RoverBot
 			{
 				if(IsValid())
 				{
-					if(UpdateStandartDeviation())
+					List<Candle> history = WebSocketSpot.History;
+
+					decimal delta1 = default;
+					decimal delta2 = default;
+					decimal delta3 = default;
+					decimal delta4 = default;
+					decimal delta5 = default;
+
+					decimal trand1 = default;
+					decimal trand2 = default;
+					decimal trand3 = default;
+					decimal trand4 = default;
+					decimal trand5 = default;
+
+					decimal factor1 = default;
+					decimal factor2 = default;
+					decimal factor3 = default;
+					decimal factor4 = default;
+					decimal factor5 = default;
+
+					decimal quota1 = default;
+					decimal quota2 = default;
+					decimal quota3 = default;
+					decimal quota4 = default;
+					decimal quota5 = default;
+					decimal quota6 = default;
+
+					bool state = true;
+
+					state = state && GetDelta(history, 16, out delta1);
+					state = state && GetDelta(history, 24, out delta2);
+					state = state && GetDelta(history, 36, out delta3);
+					state = state && GetDelta(history, 48, out delta4);
+					state = state && GetDelta(history, 64, out delta5);
+
+					state = state && GetTrand(history, 64, out trand1);
+					state = state && GetTrand(history, 128, out trand2);
+					state = state && GetTrand(history, 256, out trand3);
+					state = state && GetTrand(history, 512, out trand4);
+					state = state && GetTrand(history, 1024, out trand5);
+
+					state = state && GetDeviationFactor(history, 16, out factor1);
+					state = state && GetDeviationFactor(history, 24, out factor2);
+					state = state && GetDeviationFactor(history, 32, out factor3);
+					state = state && GetDeviationFactor(history, 64, out factor4);
+					state = state && GetDeviationFactor(history, 128, out factor5);
+					
+					state = state && GetQuota(history, 24, out quota1);
+					state = state && GetQuota(history, 64, out quota2);
+					state = state && GetQuota(history, 128, out quota3);
+					state = state && GetQuota(history, 256, out quota4);
+					state = state && GetQuota(history, 512, out quota5);
+					state = state && GetQuota(history, 1024, out quota6);
+
+					if(state == false)
 					{
-						HistoryLock = default;
+						return;
+					}
+
+					double[] buffer = new double[]
+					{
+						(double)delta1,
+						(double)delta2,
+						(double)delta3,
+						(double)delta4,
+						(double)delta5,
+						
+						(double)trand1,
+						(double)trand2,
+						(double)trand3,
+						(double)trand4,
+						(double)trand5,
+						
+						(double)factor1,
+						(double)factor2,
+						(double)factor3,
+						(double)factor4,
+						(double)factor5,
+						
+						(double)quota1,
+						(double)quota2,
+						(double)quota3,
+						(double)quota4,
+						(double)quota5,
+						(double)quota6,
+					};
+
+					var prediction = TradeModel.PredictProbability(buffer);
+
+					if(prediction.Probabilities[1] > Threshold)
+					{
+						Logger.Write("Entry Point");
 					}
 				}
 			}
@@ -499,85 +580,206 @@ namespace RoverBot
 				Logger.Write("OnHistoryUpdated: " + exception.Message);
 			}
 		}
-
-		private static void OnPriceUpdated()
+		
+		private static bool GetDelta(List<Candle> history, int window, out decimal delta)
 		{
+			delta = default;
+
 			try
 			{
-				if(IsValid())
+				int index = history.Count-1;
+
+				for(int i=index-window; i<index; ++i)
 				{
-					if(Average == default)
-					{
-						return;
-					}
+					decimal price1 = history[i].Close;
 
-					if(Deviation <= PricePrecision)
-					{
-						return;
-					}
+					decimal price2 = history[i+1].Close;
 
-					decimal price = 1.0006m*WebSocketSpot.CurrentPrice;
-
-					if(price < Average)
-					{
-						decimal delta = Average - price;
-
-						decimal ratio = delta / Deviation;
-
-						if(LastRatioPrinted.AddSeconds(1.0) <= DateTime.Now)
-						{
-							Console.WriteLine(string.Format("{0} | {1}", Format(ratio, 4), Format(Trade.Factor1, 4)));
-
-							LastRatioPrinted = DateTime.Now;
-						}
-						
-						if(ratio >= Trade.Factor1)
-						{
-							if(LastEntryDetected.AddSeconds(30.0) <= DateTime.Now)
-							{
-								Logger.Write("Entry Point on Price " + Format(price, PricePrecision) + " Detected (Ratio: " + Format(ratio, 2) + ")");
-
-								LastEntryDetected = DateTime.Now;
-							}
-						}
-
-						if(ratio >= Trade.Factor1)
-						{
-							decimal sellPrice = price + Trade.Factor2 * Deviation;
-
-							if(IsTrading && Ready)
-							{
-								Ready = false;
-								
-								if(HistoryLock == false)
-								{
-									for(int x=Trade.Stack; x>=1; --x)
-									{
-										if(Balance1 >= x*10.0m)
-										{
-											if(Buy(x, price, sellPrice))
-											{
-												HistoryLock = true;
-												
-												break;
-											}
-										}
-									}
-								}
-
-								Ready = true;
-							}
-						}
-					}
+					delta += price2 - price1;
 				}
+
+				delta /= history[index].Close;
+
+				return true;
 			}
 			catch(Exception exception)
 			{
-				Logger.Write("OnPriceUpdated: " + exception.Message);
+				Logger.Write("GetDelta: " + exception.Message);
+
+				return false;
 			}
 		}
 
-		public static bool Buy(decimal stack, decimal price, decimal sellPrice)
+		private static bool GetTrand(List<Candle> history, int window, out decimal trand)
+		{
+			trand = default;
+
+			try
+			{
+				int index = history.Count-1;
+
+				decimal price2 = history[index].Close;
+
+				for(int i=index-window; i<index; ++i)
+				{
+					decimal price1 = history[i].Close;
+
+					decimal delta = price2 - price1;
+
+					if(Math.Abs(delta) > Math.Abs(trand))
+					{
+						trand = delta;
+					}
+				}
+
+				trand = trand / price2;
+
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("GetTrand: " + exception.Message);
+
+				return false;
+			}
+		}
+
+		private static bool GetAverage(List<Candle> history, int window, out decimal average)
+		{
+			average = default;
+
+			try
+			{
+				int index = history.Count-1;
+
+				for(int i=index-window+1; i<index+1; ++i)
+				{
+					decimal price = history[i].Close;
+
+					average += price;
+				}
+
+				average /= window;
+
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("GetAverage: " + exception.Message);
+
+				return false;
+			}
+		}
+
+		private static bool GetDeviation(List<Candle> history, int window, out decimal average, out decimal deviation)
+		{
+			average = default;
+
+			deviation = default;
+
+			try
+			{
+				int index = history.Count-1;
+
+				if(GetAverage(history, window, out average) == false)
+				{
+					return false;
+				}
+				
+				deviation = default;
+
+				for(int i=index-window+1; i<index+1; ++i)
+				{
+					decimal price = history[i].Close;
+
+					deviation += (price - average) * (price - average);
+				}
+
+				deviation = (decimal)Math.Sqrt((double)deviation / (window - 1));
+
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("GetDeviation: " + exception.Message);
+
+				return false;
+			}
+		}
+
+		private static bool GetDeviationFactor(List<Candle> history, int window, out decimal factor)
+		{
+			factor = default;
+
+			try
+			{
+				int index = history.Count-1;
+
+				if(GetDeviation(history, window, out decimal average, out decimal deviation) == false)
+				{
+					return false;
+				}
+
+				decimal delta = average - history[index].Close;
+
+				factor = delta / deviation;
+
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("GetDeviationFactor: " + exception.Message);
+
+				return false;
+			}
+		}
+
+		private static bool GetQuota(List<Candle> history, int window, out decimal quota)
+		{
+			quota = default;
+
+			try
+			{
+				decimal more = default;
+
+				decimal less = default;
+
+				int index = history.Count-1;
+
+				decimal price2 = history[index].Close;
+
+				for(int i=index-window+1; i<index; ++i)
+				{
+					decimal price1 = history[i].Close;
+
+					decimal delta = Math.Abs(price1 - price2);
+
+					if(price1 > price2)
+					{
+						more += delta;
+					}
+					else
+					{
+						less += delta;
+					}
+				}
+
+				if(more + less != default)
+				{
+					quota = more / (more + less);
+				}
+
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("GetQuota: " + exception.Message);
+
+				return false;
+			}
+		}
+
+		private static bool Buy(decimal stack, decimal price, decimal sellPrice)
 		{
 			try
 			{
