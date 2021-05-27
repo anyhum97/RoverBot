@@ -30,7 +30,7 @@ namespace RoverBot
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.677";
+		public const string Version = "0.6786";
 
 		public static string Symbol = Currency2 + Currency1;
 
@@ -44,7 +44,7 @@ namespace RoverBot
 		
 		public const decimal StepSize = 0.000001m;
 
-		public const decimal Percent = 0.02m;
+		public const decimal Percent = 1.02m;
 
 		public const decimal PriceUp = 1.0004m;
 
@@ -88,6 +88,8 @@ namespace RoverBot
 
 		private static Timer InternalTimer3 = default;
 
+		private static bool IsModel = default;
+
 		public static void Start()
 		{
 			try
@@ -114,9 +116,11 @@ namespace RoverBot
 						{
 							if(StrategyBuilder.UpdateStrategy(Symbol, out var model))
 							{
+								TradeModel = model;
+								
 								IsTrading = true;
 
-								TradeModel = model;
+								IsModel = true;
 
 								break;
 							}
@@ -147,11 +151,6 @@ namespace RoverBot
 			try
 			{
 				if(Client == null)
-				{
-					return false;
-				}
-
-				if(TradeModel == null)
 				{
 					return false;
 				}
@@ -387,7 +386,7 @@ namespace RoverBot
 			{
 				InternalTimer2 = new Timer();
 
-				InternalTimer2.Interval = 600000;
+				InternalTimer2.Interval = 60000;
 
 				InternalTimer2.Elapsed += InternalTimerElapsed2;
 
@@ -405,7 +404,7 @@ namespace RoverBot
 			{
 				InternalTimer3 = new Timer();
 
-				InternalTimer3.Interval = 43200000;
+				InternalTimer3.Interval = 3600000;
 
 				InternalTimer3.Elapsed += InternalTimerElapsed3;
 
@@ -457,11 +456,11 @@ namespace RoverBot
 				{
 					if(StrategyBuilder.UpdateStrategy(Symbol, out var model))
 					{
-						if(IsTrading == false)
+						if(IsModel == false)
 						{
 							TelegramBot.Send("Торговля возобновлена");
 							
-							IsTrading = true;
+							IsModel = true;
 						}
 
 						TradeModel = model;
@@ -471,6 +470,8 @@ namespace RoverBot
 						TelegramBot.Send("Не удалось разработать подходящую стратегию");
 
 						IsTrading = false;
+
+						IsModel = false;
 					}
 				});
 			}
@@ -486,107 +487,125 @@ namespace RoverBot
 			{
 				if(IsValid())
 				{
-					List<Candle> history = WebSocketSpot.History;
+					if(IsModel)
+					{
+						List<Candle> history = WebSocketSpot.History;
 
-					decimal delta1 = default;
-					decimal delta2 = default;
-					decimal delta3 = default;
-					decimal delta4 = default;
-					decimal delta5 = default;
+						decimal delta1 = default;
+						decimal delta2 = default;
+						decimal delta3 = default;
+						decimal delta4 = default;
+						decimal delta5 = default;
 
-					decimal trand1 = default;
-					decimal trand2 = default;
-					decimal trand3 = default;
-					decimal trand4 = default;
-					decimal trand5 = default;
+						decimal trand1 = default;
+						decimal trand2 = default;
+						decimal trand3 = default;
+						decimal trand4 = default;
+						decimal trand5 = default;
 
-					decimal factor1 = default;
-					decimal factor2 = default;
-					decimal factor3 = default;
-					decimal factor4 = default;
-					decimal factor5 = default;
+						decimal factor1 = default;
+						decimal factor2 = default;
+						decimal factor3 = default;
+						decimal factor4 = default;
+						decimal factor5 = default;
 
-					decimal quota1 = default;
-					decimal quota2 = default;
-					decimal quota3 = default;
-					decimal quota4 = default;
-					decimal quota5 = default;
-					decimal quota6 = default;
+						decimal quota1 = default;
+						decimal quota2 = default;
+						decimal quota3 = default;
+						decimal quota4 = default;
+						decimal quota5 = default;
+						decimal quota6 = default;
 
-					bool state = true;
+						bool state = true;
 
-					state = state && GetDelta(history, 16, out delta1);
-					state = state && GetDelta(history, 24, out delta2);
-					state = state && GetDelta(history, 36, out delta3);
-					state = state && GetDelta(history, 48, out delta4);
-					state = state && GetDelta(history, 64, out delta5);
+						state = state && GetDelta(history, 16, out delta1);
+						state = state && GetDelta(history, 24, out delta2);
+						state = state && GetDelta(history, 36, out delta3);
+						state = state && GetDelta(history, 48, out delta4);
+						state = state && GetDelta(history, 64, out delta5);
 
-					state = state && GetTrand(history, 64, out trand1);
-					state = state && GetTrand(history, 128, out trand2);
-					state = state && GetTrand(history, 256, out trand3);
-					state = state && GetTrand(history, 512, out trand4);
-					state = state && GetTrand(history, 1024, out trand5);
+						state = state && GetTrand(history, 64, out trand1);
+						state = state && GetTrand(history, 128, out trand2);
+						state = state && GetTrand(history, 256, out trand3);
+						state = state && GetTrand(history, 512, out trand4);
+						state = state && GetTrand(history, 1024, out trand5);
 
-					state = state && GetDeviationFactor(history, 16, out factor1);
-					state = state && GetDeviationFactor(history, 24, out factor2);
-					state = state && GetDeviationFactor(history, 32, out factor3);
-					state = state && GetDeviationFactor(history, 64, out factor4);
-					state = state && GetDeviationFactor(history, 128, out factor5);
+						state = state && GetDeviationFactor(history, 16, out factor1);
+						state = state && GetDeviationFactor(history, 24, out factor2);
+						state = state && GetDeviationFactor(history, 32, out factor3);
+						state = state && GetDeviationFactor(history, 64, out factor4);
+						state = state && GetDeviationFactor(history, 128, out factor5);
 					
-					state = state && GetQuota(history, 24, out quota1);
-					state = state && GetQuota(history, 64, out quota2);
-					state = state && GetQuota(history, 128, out quota3);
-					state = state && GetQuota(history, 256, out quota4);
-					state = state && GetQuota(history, 512, out quota5);
-					state = state && GetQuota(history, 1024, out quota6);
+						state = state && GetQuota(history, 24, out quota1);
+						state = state && GetQuota(history, 64, out quota2);
+						state = state && GetQuota(history, 128, out quota3);
+						state = state && GetQuota(history, 256, out quota4);
+						state = state && GetQuota(history, 512, out quota5);
+						state = state && GetQuota(history, 1024, out quota6);
 
-					if(state == false)
-					{
-						return;
-					}
-
-					double[] buffer = new double[]
-					{
-						(double)delta1,
-						(double)delta2,
-						(double)delta3,
-						(double)delta4,
-						(double)delta5,
-						
-						(double)trand1,
-						(double)trand2,
-						(double)trand3,
-						(double)trand4,
-						(double)trand5,
-						
-						(double)factor1,
-						(double)factor2,
-						(double)factor3,
-						(double)factor4,
-						(double)factor5,
-						
-						(double)quota1,
-						(double)quota2,
-						(double)quota3,
-						(double)quota4,
-						(double)quota5,
-						(double)quota6,
-					};
-
-					var prediction = TradeModel.PredictProbability(buffer);
-
-					if(prediction.Probabilities[1] > Threshold)
-					{
-						if(Percent > 1.0m)
+						if(state == false)
 						{
-							decimal buyPrice = PriceUp * WebSocketSpot.CurrentPrice;
+							return;
+						}
 
-							decimal sellPrice = Percent * buyPrice;
+						double[] buffer = new double[]
+						{
+							(double)delta1,
+							(double)delta2,
+							(double)delta3,
+							(double)delta4,
+							(double)delta5,
+						
+							(double)trand1,
+							(double)trand2,
+							(double)trand3,
+							(double)trand4,
+							(double)trand5,
+						
+							(double)factor1,
+							(double)factor2,
+							(double)factor3,
+							(double)factor4,
+							(double)factor5,
+						
+							(double)quota1,
+							(double)quota2,
+							(double)quota3,
+							(double)quota4,
+							(double)quota5,
+							(double)quota6,
+						};
 
-							if(Balance1 >= DefaultStack)
+						var prediction = TradeModel.PredictProbability(buffer);
+
+						if(prediction.Probabilities[1] > Threshold)
+						{
+							if(Percent > 1.0m)
 							{
-								BuyStack(buyPrice, sellPrice);
+								decimal buyPrice = PriceUp * WebSocketSpot.CurrentPrice;
+
+								decimal sellPrice = Percent * buyPrice;
+
+								if(IsTrading)
+								{
+									if(Balance1 >= DefaultStack)
+									{
+										BuyStack(buyPrice, sellPrice);
+									}
+									else
+									{
+										Logger.Write("Entry Point");
+									}
+								}
+								else
+								{
+									Logger.Write("Entry Point");
+								}
 							}
+						}
+						else
+						{
+							Console.WriteLine("Skip");
 						}
 					}
 				}
@@ -805,9 +824,9 @@ namespace RoverBot
 
 					Logger.Write("BuyStack: Stack = " + Format(DefaultStack, 2));
 
-					if(DefaultStack < 1.0m)
+					if(DefaultStack < MinNotional)
 					{
-						Logger.Write("BuyStack: Stack < 1.0");
+						Logger.Write("BuyStack: Stack < MinNotional");
 						
 						Logger.Write(CheckLine);
 
@@ -855,7 +874,7 @@ namespace RoverBot
 								stringBuilder.Append(" по цене ");
 								stringBuilder.Append(Format(buyPrice, PricePrecision));
 								stringBuilder.Append(" и установил наценку в ");
-								stringBuilder.Append(Format(sellFactor, 3));
+								stringBuilder.Append(Format(100.0m*sellFactor, 2));
 								stringBuilder.Append("%");
 								
 								TelegramBot.Send(stringBuilder.ToString());

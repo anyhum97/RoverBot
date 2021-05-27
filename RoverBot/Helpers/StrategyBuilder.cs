@@ -35,6 +35,8 @@ namespace RoverBot
 
 		public const int Seed = 108377437;
 
+		public const int Trees = 100;
+
 		public static bool UpdateStrategy(string symbol, out ClassificationForestModel model)
 		{
 			model = default;
@@ -316,7 +318,7 @@ namespace RoverBot
 					}
 				}
 
-				var learner = new ClassificationRandomForestLearner(trees: 100);
+				var learner = new ClassificationRandomForestLearner(trees: Trees, seed: Seed);
 
 				model = learner.Learn(inputs.ToArray(), results.ToArray());
 
