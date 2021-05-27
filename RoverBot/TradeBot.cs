@@ -30,9 +30,11 @@ namespace RoverBot
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.675";
+		public const string Version = "0.677";
 
 		public static string Symbol = Currency2 + Currency1;
+
+		public const decimal DefaultStack = 12.0m;
 		
 		public const decimal MinNotional = 10.00m;
 
@@ -43,6 +45,8 @@ namespace RoverBot
 		public const decimal StepSize = 0.000001m;
 
 		public const decimal Percent = 0.02m;
+
+		public const decimal PriceUp = 1.0004m;
 
 		public const double Threshold = 0.66;
 
@@ -127,6 +131,8 @@ namespace RoverBot
 				StartInternalTimer2();
 
 				StartInternalTimer3();
+
+				CheckSellOrders();
 			}
 			catch(Exception exception)
 			{
@@ -399,7 +405,7 @@ namespace RoverBot
 			{
 				InternalTimer3 = new Timer();
 
-				InternalTimer3.Interval = 3600000;
+				InternalTimer3.Interval = 43200000;
 
 				InternalTimer3.Elapsed += InternalTimerElapsed3;
 
@@ -571,7 +577,17 @@ namespace RoverBot
 
 					if(prediction.Probabilities[1] > Threshold)
 					{
-						Logger.Write("Entry Point");
+						if(Percent > 1.0m)
+						{
+							decimal buyPrice = PriceUp * WebSocketSpot.CurrentPrice;
+
+							decimal sellPrice = Percent * buyPrice;
+
+							if(Balance1 >= DefaultStack)
+							{
+								BuyStack(buyPrice, sellPrice);
+							}
+						}
 					}
 				}
 			}
@@ -779,7 +795,7 @@ namespace RoverBot
 			}
 		}
 
-		private static bool Buy(decimal stack, decimal price, decimal sellPrice)
+		public static bool BuyStack(decimal buyPrice, decimal sellPrice)
 		{
 			try
 			{
@@ -787,42 +803,42 @@ namespace RoverBot
 				{
 					Logger.Write(CheckLine);
 
-					Logger.Write("Buy: Stack = " + Format(stack, 2));
+					Logger.Write("BuyStack: Stack = " + Format(DefaultStack, 2));
 
-					if(stack < 1.0m)
+					if(DefaultStack < 1.0m)
 					{
-						Logger.Write("Buy: Stack < 1.0");
+						Logger.Write("BuyStack: Stack < 1.0");
 						
 						Logger.Write(CheckLine);
 
 						return false;
 					}
 					
-					if(price <= 0.0m)
+					if(buyPrice <= 0.0m)
 					{
-						Logger.Write("Buy: Price <= 0.0");
+						Logger.Write("BuyStack: BuyPrice <= 0.0");
 						
 						Logger.Write(CheckLine);
 
 						return false;
 					}
 					
-					if(sellPrice <= price)
+					if(sellPrice <= buyPrice)
 					{
-						Logger.Write("Buy: SellPrice <= Price");
+						Logger.Write("BuyStack: SellPrice <= BuyPrice");
 						
 						Logger.Write(CheckLine);
 
 						return false;
 					}
 
-					decimal sellFactor = (sellPrice-price)/price;
+					decimal sellFactor = (sellPrice-buyPrice)/buyPrice;
 
-					decimal volume = MinNotional*stack/price;
+					decimal volume = DefaultStack/buyPrice;
 					
 					decimal notional = default;
 
-					if(PlaceBuyOrder(ref volume, ref price, ref notional, out long buyId))
+					if(PlaceBuyOrder(ref volume, ref buyPrice, ref notional, out long buyId))
 					{
 						const int attempts = 3;
 
@@ -837,14 +853,14 @@ namespace RoverBot
 								stringBuilder.Append(" монеты ");
 								stringBuilder.Append(Currency2);
 								stringBuilder.Append(" по цене ");
-								stringBuilder.Append(Format(price, PricePrecision));
+								stringBuilder.Append(Format(buyPrice, PricePrecision));
 								stringBuilder.Append(" и установил наценку в ");
 								stringBuilder.Append(Format(sellFactor, 3));
 								stringBuilder.Append("%");
 								
 								TelegramBot.Send(stringBuilder.ToString());
 
-								Logger.Write("Buy: Success");
+								Logger.Write("BuyStack: Success");
 
 								Logger.Write(CheckLine);
 
@@ -863,7 +879,7 @@ namespace RoverBot
 						sellOrderError.Append(" монеты ");
 						sellOrderError.Append(Currency2);
 						sellOrderError.Append(" по цене ");
-						sellOrderError.Append(Format(price, PricePrecision));
+						sellOrderError.Append(Format(buyPrice, PricePrecision));
 						sellOrderError.Append(", но мне не удалось выставить ордер на продажу.\n\n");
 						sellOrderError.Append("Цена продажи: ");
 
@@ -871,7 +887,7 @@ namespace RoverBot
 
 						TelegramBot.Send(sellOrderError.ToString());
 
-						Logger.Write("Buy: Can Not Place Sell Order");
+						Logger.Write("BuyStack: Invalid Sell Order");
 
 						Logger.Write(CheckLine);
 
@@ -883,7 +899,7 @@ namespace RoverBot
 					}
 					else
 					{
-						Logger.Write("Buy: Can Not Place Buy Order");
+						Logger.Write("BuyStack: Can Not Place Buy Order");
 						
 						Logger.Write(CheckLine);
 
@@ -892,14 +908,14 @@ namespace RoverBot
 				}
 				else
 				{
-					Logger.Write("Buy: Invalid Account");
+					Logger.Write("BuyStack: Invalid Account");
 
 					return false;
 				}
 			}
 			catch(Exception exception)
 			{
-				Logger.Write("Buy: " + exception.Message);
+				Logger.Write("BuyStack: " + exception.Message);
 				
 				return false;
 			}
@@ -915,7 +931,7 @@ namespace RoverBot
 				{
 					if(ValidateTradeParams(ref volume, ref price, ref notional))
 					{
-						WebCallResult<BinancePlacedOrder> request = Client.Spot.Order.PlaceOrder(Symbol, OrderSide.Buy, OrderType.Limit, volume, price:price, timeInForce:TimeInForce.FillOrKill);
+						WebCallResult<BinancePlacedOrder> request = Client.Spot.Order.PlaceOrder(Symbol, OrderSide.Buy, OrderType.Market, volume);
 
 						if(request.Success)
 						{
@@ -1125,11 +1141,11 @@ namespace RoverBot
 				StringBuilder inputParams = new StringBuilder();
 				
 				inputParams.Append("ValidateTradeParams: Volume = ");
-				inputParams.Append(Format(volume));
+				inputParams.Append(Format(volume, VolumePrecision));
 				inputParams.Append(", Price = ");
-				inputParams.Append(Format(price));
+				inputParams.Append(Format(price, PricePrecision));
 				inputParams.Append(", Notional = ");
-				inputParams.Append(Format(price*volume));
+				inputParams.Append(Format(price*volume, NotionalPrecision));
 				
 				Logger.Write(inputParams.ToString());
 				
@@ -1196,22 +1212,6 @@ namespace RoverBot
 				
 				notional = price*volume;
 				
-				if(notional < 0.99m*MinNotional)
-				{
-					StringBuilder tradeParams = new StringBuilder();
-					
-					tradeParams.Append("ValidateTradeParams: Volume = ");
-					tradeParams.Append(Point(volume));
-					tradeParams.Append(", Price = ");
-					tradeParams.Append(Point(price));
-					tradeParams.Append(" Notional = ");
-					tradeParams.Append(Point(notional));
-					
-					Logger.Write(tradeParams.ToString());
-					
-					return false;
-				}
-				
 				if(notional < MinNotional)
 				{
 					volume = (MinNotional+StepSize) / price;
@@ -1231,7 +1231,7 @@ namespace RoverBot
 				outputParams.Append(", Price = ");
 				outputParams.Append(Point(price));
 				outputParams.Append(" Notional = ");
-				outputParams.Append(Point(notional));
+				outputParams.Append(Format(notional, NotionalPrecision));
 				
 				Logger.Write(outputParams.ToString());
 				

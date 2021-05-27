@@ -33,12 +33,12 @@ namespace RoverBot
 
 		public const int Expiration = 600;
 
-		public const int Seed = 108377437;		
+		public const int Seed = 108377437;
 
 		public static bool UpdateStrategy(string symbol, out ClassificationForestModel model)
 		{
 			model = default;
-
+			
 			try
 			{
 				if(LoadTradeModel(out model))
@@ -89,15 +89,10 @@ namespace RoverBot
 
 				FileInfo fileInfo = new FileInfo(ModelPath);
 
-				if(fileInfo.LastWriteTime.AddHours(4.0) < DateTime.Now)
+				if(fileInfo.LastWriteTime.AddDays(1.0) < DateTime.Now)
 				{
 					return false;
 				}
-
-				//if(fileInfo.LastWriteTime.AddDays(1.0) < DateTime.Now)
-				//{
-				//	return false;
-				//}
 
 				model = ClassificationForestModel.Load(() => new StreamReader(ModelPath));
 
