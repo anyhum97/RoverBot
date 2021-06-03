@@ -15,27 +15,21 @@ namespace RoverBot
 	{
 		public const string ModelPath = "TradeModel.xml";
 
-		public const double Learn = 0.8;
-
-		public const double Test = 0.2;
-
 		public const decimal Percent = 0.02m;
 
-		public const double Threshold = 0.66;
+		public const double Threshold = 0.56;
 
-		public const double Border = 0.95;
-
-		public const int StartOffset = 1024;
+		public const int StartOffset = 2048;
 
 		public const int StopOffset = 1440;
 
-		public const int BufferSize = 45664;
+		public const int BufferSize = 88864;
 
-		public const int Expiration = 600;
+		public const int Expiration = 240;
 
 		public const int Seed = 108377437;
 
-		public const int Trees = 100;
+		public const int Trees = 256;
 
 		public static bool UpdateStrategy(string symbol, out ClassificationForestModel model)
 		{
@@ -43,11 +37,6 @@ namespace RoverBot
 			
 			try
 			{
-				if(LoadTradeModel(out model))
-				{
-					return true;
-				}
-
 				Logger.Write("UpdateStrategy: Loading History...");
 
 				if(LoadHistory(symbol, BufferSize, out var history))
@@ -73,41 +62,6 @@ namespace RoverBot
 			catch(Exception exception)
 			{
 				Logger.Write("UpdateStrategy: " + exception.Message);
-
-				return false;
-			}
-		}
-
-		private static bool LoadTradeModel(out ClassificationForestModel model)
-		{
-			model = default;
-
-			try
-			{
-				if(File.Exists(ModelPath) == false)
-				{
-					return false;
-				}
-
-				FileInfo fileInfo = new FileInfo(ModelPath);
-
-				if(fileInfo.LastWriteTime.AddDays(1.0) < DateTime.Now)
-				{
-					return false;
-				}
-
-				model = ClassificationForestModel.Load(() => new StreamReader(ModelPath));
-
-				if(model == null)
-				{
-					return false;
-				}
-
-				return true;
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("LoadTradeModel: " + exception.Message);
 
 				return false;
 			}
@@ -211,262 +165,73 @@ namespace RoverBot
 
 			try
 			{
-				Random RandomDevice = new Random(Seed);
-
 				List<double[]> inputs = new List<double[]>();
 
 				List<double> results = new List<double>();
 
 				for(int i=StartOffset; i<history.Count-StopOffset; ++i)
 				{
-					double random = RandomDevice.NextDouble();
+					bool state = true;
 
-					if(random <= Learn)
+					decimal factor1 = default;
+					decimal factor2 = default;
+					decimal factor3 = default;
+					decimal factor4 = default;
+
+					decimal quota1 = default;
+					decimal quota2 = default;
+					decimal quota3 = default;
+					decimal quota4 = default;
+					decimal quota5 = default;
+					decimal quota6 = default;
+					decimal quota7 = default;
+
+					int isEntry = default;
+
+					state = state && GetDeviationFactor(history, i, 32, out factor1);
+					state = state && GetDeviationFactor(history, i, 64, out factor2);
+					state = state && GetDeviationFactor(history, i, 164, out factor3);
+					state = state && GetDeviationFactor(history, i, 315, out factor4);
+					
+					state = state && GetQuota(history, i, 25, out quota1);
+					state = state && GetQuota(history, i, 48, out quota2);
+					state = state && GetQuota(history, i, 96, out quota3);
+					state = state && GetQuota(history, i, 210, out quota4);
+					state = state && GetQuota(history, i, 396, out quota5);
+					state = state && GetQuota(history, i, 768, out quota6);
+					state = state && GetQuota(history, i, 1536, out quota7);
+
+					state = state && IsEntry(history, i, Expiration, Percent, out isEntry);
+
+					if(state == false)
 					{
-						bool state = true;
-
-						decimal delta1 = default;
-						decimal delta2 = default;
-						decimal delta3 = default;
-						decimal delta4 = default;
-						decimal delta5 = default;
-
-						decimal trand1 = default;
-						decimal trand2 = default;
-						decimal trand3 = default;
-						decimal trand4 = default;
-						decimal trand5 = default;
-
-						decimal factor1 = default;
-						decimal factor2 = default;
-						decimal factor3 = default;
-						decimal factor4 = default;
-						decimal factor5 = default;
-
-						decimal quota1 = default;
-						decimal quota2 = default;
-						decimal quota3 = default;
-						decimal quota4 = default;
-						decimal quota5 = default;
-						decimal quota6 = default;
-
-						int isEntry = default;
-
-						state = state && GetDelta(history, i, 16, out delta1);
-						state = state && GetDelta(history, i, 24, out delta2);
-						state = state && GetDelta(history, i, 36, out delta3);
-						state = state && GetDelta(history, i, 48, out delta4);
-						state = state && GetDelta(history, i, 64, out delta5);
-
-						state = state && GetTrand(history, i, 64, out trand1);
-						state = state && GetTrand(history, i, 128, out trand2);
-						state = state && GetTrand(history, i, 256, out trand3);
-						state = state && GetTrand(history, i, 512, out trand4);
-						state = state && GetTrand(history, i, 1024, out trand5);
-
-						state = state && GetDeviationFactor(history, i, 16, out factor1);
-						state = state && GetDeviationFactor(history, i, 24, out factor2);
-						state = state && GetDeviationFactor(history, i, 32, out factor3);
-						state = state && GetDeviationFactor(history, i, 64, out factor4);
-						state = state && GetDeviationFactor(history, i, 128, out factor5);
-						
-						state = state && GetQuota(history, i, 24, out quota1);
-						state = state && GetQuota(history, i, 64, out quota2);
-						state = state && GetQuota(history, i, 128, out quota3);
-						state = state && GetQuota(history, i, 256, out quota4);
-						state = state && GetQuota(history, i, 512, out quota5);
-						state = state && GetQuota(history, i, 1024, out quota6);
-						
-						state = state && IsEntry(history, i, Expiration, Percent, out isEntry);
-
-						if(state == false)
-						{
-							return false;
-						}
-
-						double[] buffer = new double[]
-						{
-							(double)delta1,
-							(double)delta2,
-							(double)delta3,
-							(double)delta4,
-							(double)delta5,
-							
-							(double)trand1,
-							(double)trand2,
-							(double)trand3,
-							(double)trand4,
-							(double)trand5,
-							
-							(double)factor1,
-							(double)factor2,
-							(double)factor3,
-							(double)factor4,
-							(double)factor5,
-							
-							(double)quota1,
-							(double)quota2,
-							(double)quota3,
-							(double)quota4,
-							(double)quota5,
-							(double)quota6,
-						};
-
-						inputs.Add(buffer);
-
-						results.Add(isEntry);
+						return false;
 					}
+
+					double[] buffer = new double[]
+					{						
+						(double)factor1,
+						(double)factor2,
+						(double)factor3,
+						(double)factor4,
+						
+						(double)quota1,
+						(double)quota2,
+						(double)quota3,
+						(double)quota4,
+						(double)quota5,
+						(double)quota6,
+						(double)quota7,
+					};
+
+					inputs.Add(buffer);
+
+					results.Add(isEntry);
 				}
 
 				var learner = new ClassificationRandomForestLearner(trees: Trees, seed: Seed);
 
 				model = learner.Learn(inputs.ToArray(), results.ToArray());
-
-				RandomDevice = new Random(Seed);
-
-				inputs = new List<double[]>();
-
-				results = new List<double>();
-
-				for(int i=StartOffset; i<history.Count-StopOffset; ++i)
-				{
-					double random = RandomDevice.NextDouble();
-
-					if(random >= Learn && random <= Learn + Test)
-					{
-						bool state = true;
-
-						decimal delta1 = default;
-						decimal delta2 = default;
-						decimal delta3 = default;
-						decimal delta4 = default;
-						decimal delta5 = default;
-
-						decimal trand1 = default;
-						decimal trand2 = default;
-						decimal trand3 = default;
-						decimal trand4 = default;
-						decimal trand5 = default;
-
-						decimal factor1 = default;
-						decimal factor2 = default;
-						decimal factor3 = default;
-						decimal factor4 = default;
-						decimal factor5 = default;
-
-						decimal quota1 = default;
-						decimal quota2 = default;
-						decimal quota3 = default;
-						decimal quota4 = default;
-						decimal quota5 = default;
-						decimal quota6 = default;
-
-						int isEntry = default;
-
-						state = state && GetDelta(history, i, 16, out delta1);
-						state = state && GetDelta(history, i, 24, out delta2);
-						state = state && GetDelta(history, i, 36, out delta3);
-						state = state && GetDelta(history, i, 48, out delta4);
-						state = state && GetDelta(history, i, 64, out delta5);
-
-						state = state && GetTrand(history, i, 64, out trand1);
-						state = state && GetTrand(history, i, 128, out trand2);
-						state = state && GetTrand(history, i, 256, out trand3);
-						state = state && GetTrand(history, i, 512, out trand4);
-						state = state && GetTrand(history, i, 1024, out trand5);
-
-						state = state && GetDeviationFactor(history, i, 16, out factor1);
-						state = state && GetDeviationFactor(history, i, 24, out factor2);
-						state = state && GetDeviationFactor(history, i, 32, out factor3);
-						state = state && GetDeviationFactor(history, i, 64, out factor4);
-						state = state && GetDeviationFactor(history, i, 128, out factor5);
-						
-						state = state && GetQuota(history, i, 24, out quota1);
-						state = state && GetQuota(history, i, 64, out quota2);
-						state = state && GetQuota(history, i, 128, out quota3);
-						state = state && GetQuota(history, i, 256, out quota4);
-						state = state && GetQuota(history, i, 512, out quota5);
-						state = state && GetQuota(history, i, 1024, out quota6);
-						
-						state = state && IsEntry(history, i, Expiration, Percent, out isEntry);
-
-						if(state == false)
-						{
-							return false;
-						}
-
-						double[] buffer = new double[]
-						{
-							(double)delta1,
-							(double)delta2,
-							(double)delta3,
-							(double)delta4,
-							(double)delta5,
-							
-							(double)trand1,
-							(double)trand2,
-							(double)trand3,
-							(double)trand4,
-							(double)trand5,
-							
-							(double)factor1,
-							(double)factor2,
-							(double)factor3,
-							(double)factor4,
-							(double)factor5,
-							
-							(double)quota1,
-							(double)quota2,
-							(double)quota3,
-							(double)quota4,
-							(double)quota5,
-							(double)quota6,
-						};
-
-						inputs.Add(buffer);
-
-						results.Add(isEntry);
-					}
-				}
-
-				var predictions = model.PredictProbability(inputs.ToArray());
-
-				int good = default;
-
-				int fail = default;
-
-				for(int i=0; i<predictions.Length; ++i)
-				{
-					if(predictions[i].Probabilities[1] > Threshold)
-					{
-						if(results[i] == 1.0)
-						{
-							++good;
-						}
-						else
-						{
-							++fail;
-						}
-					}
-				}
-
-				Logger.Write(string.Format("BuildStrategy: {0} | {1}", good, fail));
-
-				if(good + fail == default)
-				{
-					return false;
-				}
-
-				double factor = (double)good / (good + fail);
-
-				if(factor < Border)
-				{
-					Logger.Write("BuildStrategy: Invalid Percent");
-
-					return false;
-				}
-
-				model.Save(() => new StreamWriter(ModelPath));
 
 				return true;
 			}

@@ -30,7 +30,7 @@ namespace RoverBot
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.6786";
+		public const string Version = "0.721";
 
 		public static string Symbol = Currency2 + Currency1;
 
@@ -48,7 +48,7 @@ namespace RoverBot
 
 		public const decimal PriceUp = 1.0004m;
 
-		public const double Threshold = 0.66;
+		public const double Threshold = 0.56;
 
 		public const int CurrencyPrecision1 = 2;
 
@@ -404,7 +404,7 @@ namespace RoverBot
 			{
 				InternalTimer3 = new Timer();
 
-				InternalTimer3.Interval = 3600000;
+				InternalTimer3.Interval = 86400000;
 
 				InternalTimer3.Elapsed += InternalTimerElapsed3;
 
@@ -491,23 +491,10 @@ namespace RoverBot
 					{
 						List<Candle> history = WebSocketSpot.History;
 
-						decimal delta1 = default;
-						decimal delta2 = default;
-						decimal delta3 = default;
-						decimal delta4 = default;
-						decimal delta5 = default;
-
-						decimal trand1 = default;
-						decimal trand2 = default;
-						decimal trand3 = default;
-						decimal trand4 = default;
-						decimal trand5 = default;
-
 						decimal factor1 = default;
 						decimal factor2 = default;
 						decimal factor3 = default;
 						decimal factor4 = default;
-						decimal factor5 = default;
 
 						decimal quota1 = default;
 						decimal quota2 = default;
@@ -515,33 +502,22 @@ namespace RoverBot
 						decimal quota4 = default;
 						decimal quota5 = default;
 						decimal quota6 = default;
+						decimal quota7 = default;
 
 						bool state = true;
 
-						state = state && GetDelta(history, 16, out delta1);
-						state = state && GetDelta(history, 24, out delta2);
-						state = state && GetDelta(history, 36, out delta3);
-						state = state && GetDelta(history, 48, out delta4);
-						state = state && GetDelta(history, 64, out delta5);
-
-						state = state && GetTrand(history, 64, out trand1);
-						state = state && GetTrand(history, 128, out trand2);
-						state = state && GetTrand(history, 256, out trand3);
-						state = state && GetTrand(history, 512, out trand4);
-						state = state && GetTrand(history, 1024, out trand5);
-
-						state = state && GetDeviationFactor(history, 16, out factor1);
-						state = state && GetDeviationFactor(history, 24, out factor2);
-						state = state && GetDeviationFactor(history, 32, out factor3);
-						state = state && GetDeviationFactor(history, 64, out factor4);
-						state = state && GetDeviationFactor(history, 128, out factor5);
+						state = state && GetDeviationFactor(history, 32, out factor1);
+						state = state && GetDeviationFactor(history, 64, out factor2);
+						state = state && GetDeviationFactor(history, 164, out factor3);
+						state = state && GetDeviationFactor(history, 315, out factor4);
 					
-						state = state && GetQuota(history, 24, out quota1);
-						state = state && GetQuota(history, 64, out quota2);
-						state = state && GetQuota(history, 128, out quota3);
-						state = state && GetQuota(history, 256, out quota4);
-						state = state && GetQuota(history, 512, out quota5);
-						state = state && GetQuota(history, 1024, out quota6);
+						state = state && GetQuota(history, 25, out quota1);
+						state = state && GetQuota(history, 48, out quota2);
+						state = state && GetQuota(history, 96, out quota3);
+						state = state && GetQuota(history, 210, out quota4);
+						state = state && GetQuota(history, 396, out quota5);
+						state = state && GetQuota(history, 768, out quota6);
+						state = state && GetQuota(history, 1536, out quota7);
 
 						if(state == false)
 						{
@@ -550,23 +526,10 @@ namespace RoverBot
 
 						double[] buffer = new double[]
 						{
-							(double)delta1,
-							(double)delta2,
-							(double)delta3,
-							(double)delta4,
-							(double)delta5,
-						
-							(double)trand1,
-							(double)trand2,
-							(double)trand3,
-							(double)trand4,
-							(double)trand5,
-						
 							(double)factor1,
 							(double)factor2,
 							(double)factor3,
 							(double)factor4,
-							(double)factor5,
 						
 							(double)quota1,
 							(double)quota2,
@@ -574,6 +537,7 @@ namespace RoverBot
 							(double)quota4,
 							(double)quota5,
 							(double)quota6,
+							(double)quota7,
 						};
 
 						var prediction = TradeModel.PredictProbability(buffer);
