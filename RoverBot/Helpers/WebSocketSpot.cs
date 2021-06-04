@@ -104,7 +104,7 @@ namespace RoverBot
 
 		public static DateTime HistoryUpdationTime;
 
-		public const int HistoryCount = 2048;
+		public const int HistoryCount = 128;
 
 		private static bool Ready = true;
 
