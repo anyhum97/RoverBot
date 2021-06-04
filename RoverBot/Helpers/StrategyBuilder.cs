@@ -15,9 +15,7 @@ namespace RoverBot
 	{
 		public const string ModelPath = "TradeModel.xml";
 
-		public const decimal Percent = 0.02m;
-
-		public const double Threshold = 0.56;
+		public const decimal Percent = 0.01m;
 
 		public const int StartOffset = 2048;
 
