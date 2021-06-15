@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Globalization;
 using System.Timers;
 using System.Text;
+using System.Linq;
 
 using Binance.Net;
 using Binance.Net.Enums;
@@ -13,7 +14,6 @@ using Binance.Net.Objects.Spot.SpotData;
 using CryptoExchange.Net.Objects;
 
 using Timer = System.Timers.Timer;
-using System.Linq;
 
 namespace RoverBot
 {
@@ -29,7 +29,7 @@ namespace RoverBot
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.774";
+		public const string Version = "0.7741";
 
 		public static string Symbol = Currency2 + Currency1;
 		
@@ -64,8 +64,6 @@ namespace RoverBot
 		public static decimal Balance2 { get; private set; } = default;
 
 		public static decimal TotalBalance { get; private set; } = default;
-
-		public static decimal WorkingBalance { get; private set; } = default;
 
 		public static decimal FeeCoins { get; private set; } = default;
 
@@ -243,8 +241,6 @@ namespace RoverBot
 						if(find1 && find2 && find3)
 						{
 							TotalBalance = total1 + total2*price + FeeCoins*FeePrice;
-
-							WorkingBalance = total1 + total2*price;
 
 							if(updated1 || updated2 || updated3)
 							{

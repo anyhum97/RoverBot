@@ -56,6 +56,9 @@
     <Prefer32Bit>true</Prefer32Bit>
     <NoWarn>CS0162</NoWarn>
   </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject />
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="Binance.Net, Version=6.13.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Binance.Net.6.13.3\lib\netstandard2.0\Binance.Net.dll</HintPath>
