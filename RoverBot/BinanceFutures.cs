@@ -105,6 +105,8 @@ namespace RoverBot
 				StartInternalTimer1();
 
 				StartInternalTimer2();
+
+				
 			}
 			catch(Exception exception)
 			{
@@ -208,7 +210,7 @@ namespace RoverBot
 			}
 		}
 
-		public static void OnShortEntryPointDetected(decimal depositFactor)
+		public static void OnEntryPointDetected()
 		{
 			try
 			{
@@ -220,91 +222,23 @@ namespace RoverBot
 						{
 							if(CurrentLeverage == DefaultLeverage)
 							{
-								if(depositFactor > 0.0m && depositFactor <= 1.0m)
-								{
-									decimal price = WebSocketFutures.CurrentPrice;
+								decimal price = WebSocketFutures.CurrentPrice;
 
-									decimal takeProfit = Math.Round(0.9936m * price, 2);
+								decimal takeProfit = Math.Round(1.011m * price, 2);
 
-									decimal stopLoss = Math.Round(1.004m * price, 2);
+								const decimal depositFactor = 1.0m;
 
-									decimal deposit = depositFactor * Balance;
+								decimal deposit = depositFactor * Balance;
 
-									deposit = Math.Min(deposit, 400.0m);
+								int deals = (int)Math.Floor(deposit * CurrentLeverage / (price * VolumeFilter));
 
-									decimal volume = deposit * CurrentLeverage / price;
+								decimal volume = deals * VolumeFilter;
 
-									volume = Math.Round(volume, VolumePrecision);
+								PlaceLongOrder(Symbol, VolumeFilter, takeProfit);
 
-									PlaceShortOrder(Symbol, volume, takeProfit, stopLoss);
+								CheckPosition(Symbol);
 
-									CheckPosition(Symbol);
-
-									UpdateBalance();
-								}
-							}
-							else
-							{
-								TelegramBot.Send("Установлено неверное плечо (" + CurrentLeverage + ")");
-
-								Logger.Write("Invalid Leverage");
-							}
-						}
-						else
-						{
-							Logger.Write("Already In Position");
-						}
-					}
-					else
-					{
-						Logger.Write("EntryPoint");
-					}
-				}
-				else
-				{
-					Logger.Write("EntryPoint");
-				}
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("OnShortEntryPointDetected: " + exception.Message);
-			}
-		}
-
-		public static void OnLongEntryPointDetected(decimal depositFactor)
-		{
-			try
-			{
-				if(IsValid())
-				{
-					if(IsTrading)
-					{
-						if(InPosition == false)
-						{
-							if(CurrentLeverage == DefaultLeverage)
-							{
-								if(depositFactor > 0.0m && depositFactor <= 1.0m)
-								{
-									decimal price = WebSocketFutures.CurrentPrice;
-
-									decimal takeProfit = Math.Round(1.0062m * price, 2);
-
-									decimal stopLoss = Math.Round(0.996m * price, 2);
-
-									decimal deposit = depositFactor * Balance;
-
-									deposit = Math.Min(deposit, 400.0m);
-
-									decimal volume = deposit * CurrentLeverage / price;
-
-									volume = Math.Round(volume, VolumePrecision);
-
-									PlaceLongOrder(Symbol, volume, takeProfit, stopLoss);
-
-									CheckPosition(Symbol);
-
-									UpdateBalance();
-								}
+								UpdateBalance();
 							}
 							else
 							{
@@ -334,7 +268,7 @@ namespace RoverBot
 			}
 		}
 
-		private static bool PlaceShortOrder(string symbol, decimal volume, decimal takeProfit, decimal stopLoss)
+		private static bool PlaceLongOrder(string symbol, decimal volume, decimal takeProfit)
 		{
 			try
 			{
@@ -357,174 +291,29 @@ namespace RoverBot
 						decimal price = WebSocketFutures.CurrentPrice;
 
 						takeProfit = Math.Round(takeProfit, PricePrecision);
-
-						stopLoss = Math.Round(stopLoss, PricePrecision);
-						
-						if(takeProfit >= price)
-						{
-							return false;
-						}
-
-						if(stopLoss <= price)
-						{
-							return false;
-						}
-
-						var orders = new BinanceFuturesBatchOrder[3];
-						
-						orders[0] = new BinanceFuturesBatchOrder()
-						{
-							Symbol = symbol,
-							Side = OrderSide.Sell,
-							Type = OrderType.Market,
-							PositionSide = PositionSide.Both,
-							Quantity = volume,
-							ReduceOnly = false,
-						};
-						
-						orders[1] = new BinanceFuturesBatchOrder()
-						{
-							Symbol = symbol,
-							Side = OrderSide.Buy,
-							Type = OrderType.StopMarket,
-							PositionSide = PositionSide.Both,
-							TimeInForce = TimeInForce.GoodTillCancel,
-							ActivationPrice = stopLoss,
-							StopPrice = stopLoss,
-							Quantity = volume,
-							ReduceOnly = true,
-						};
-
-						orders[2] = new BinanceFuturesBatchOrder()
-						{
-							Symbol = symbol,
-							Side = OrderSide.Buy,
-							Type = OrderType.TakeProfitMarket,
-							PositionSide = PositionSide.Both,
-							TimeInForce = TimeInForce.GoodTillCancel,
-							ActivationPrice = takeProfit,
-							StopPrice = takeProfit,
-							Quantity = volume,
-							ReduceOnly = true,
-						};
-						
-						var responce = Client.FuturesUsdt.Order.PlaceMultipleOrders(orders);
-						
-						if(responce.Success)
-						{
-							var data = responce.Data.ToArray();
-							
-							foreach(var record in data)
-							{
-								if(record.Success == false)
-								{
-									Logger.Write("PlaceShortOrder: " + record.Error.Message);
-								}
-							}
-							
-							Logger.Write("PlaceShortOrder: Success (Price = " + Format(price, PricePrecision) + ")");
-
-							TelegramBot.Send("Short Order");
-
-							return true;
-						}
-						else
-						{
-							Logger.Write("PlaceShortOrder: " + responce.Error.Message);
-							
-							CancelAllOrders(symbol);
-							
-							return false;
-						}
-					}
-					else
-					{
-						Logger.Write("PlaceShortOrder: Invalid Price");
-						
-						return false;
-					}
-				}
-				else
-				{
-					Logger.Write("PlaceShortOrder: Invalid Account");
-					
-					return false;
-				}
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("PlaceShortOrder: " + exception.Message);
-
-				return false;
-			}
-		}
-
-		private static bool PlaceLongOrder(string symbol, decimal volume, decimal takeProfit, decimal stopLoss)
-		{
-			try
-			{
-				if(IsValid())
-				{
-					if(WebSocketFutures.CurrentPrice > 0.0m)
-					{
-						if(symbol == null)
-						{
-							return false;
-						}
-						
-						volume = Math.Round(volume, VolumePrecision);
-						
-						if(volume < VolumeFilter)
-						{
-							return false;
-						}
-
-						decimal price = WebSocketFutures.CurrentPrice;
-
-						takeProfit = Math.Round(takeProfit, PricePrecision);
-
-						stopLoss = Math.Round(stopLoss, PricePrecision);
 						
 						if(takeProfit <= price)
 						{
 							return false;
 						}
 
-						if(stopLoss >= price)
-						{
-							return false;
-						}
-
-						var orders = new BinanceFuturesBatchOrder[3];
+						var orders = new BinanceFuturesBatchOrder[1];
 						
+						//orders[0] = new BinanceFuturesBatchOrder()
+						//{
+						//	Symbol = symbol,
+						//	Side = OrderSide.Buy,
+						//	Type = OrderType.Market,
+						//	PositionSide = PositionSide.Both,
+						//	Quantity = volume,
+						//	ReduceOnly = false,
+						//};
+
 						orders[0] = new BinanceFuturesBatchOrder()
 						{
 							Symbol = symbol,
-							Side = OrderSide.Buy,
-							Type = OrderType.Market,
-							PositionSide = PositionSide.Both,
-							Quantity = volume,
-							ReduceOnly = false,
-						};
-						
-						orders[1] = new BinanceFuturesBatchOrder()
-						{
-							Symbol = symbol,
 							Side = OrderSide.Sell,
-							Type = OrderType.StopMarket,
-							PositionSide = PositionSide.Both,
-							TimeInForce = TimeInForce.GoodTillCancel,
-							ActivationPrice = stopLoss,
-							StopPrice = stopLoss,
-							Quantity = volume,
-							ReduceOnly = true,
-						};
-
-						orders[2] = new BinanceFuturesBatchOrder()
-						{
-							Symbol = symbol,
-							Side = OrderSide.Sell,
-							Type = OrderType.TakeProfitMarket,
+							Type = OrderType.TakeProfit,
 							PositionSide = PositionSide.Both,
 							TimeInForce = TimeInForce.GoodTillCancel,
 							ActivationPrice = takeProfit,

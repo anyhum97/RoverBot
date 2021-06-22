@@ -115,10 +115,12 @@ namespace RoverBot
 			try
 			{
 				StartInternalTimer();
+
+				HistoryUpdated += CheckEntryPoint;
 			}
 			catch(Exception exception)
 			{
-				Logger.Write("WebSocketSpot: " + exception.Message);
+				Logger.Write("WebSocketFutures: " + exception.Message);
 			}
 		}
 
@@ -239,6 +241,184 @@ namespace RoverBot
 			catch(Exception exception)
 			{
 				Logger.Write("InternalTimerElapsed: " + exception.Message);
+			}
+		}
+
+		private static void CheckEntryPoint()
+		{
+			try
+			{
+				bool state = true;
+
+				decimal deviation = default;
+
+				decimal quota = default;
+
+				state = state && GetDeviationFactor(History, 120, out deviation);
+
+				state = state && GetQuota(History, 32, out quota);
+
+				if(state)
+				{
+					if(deviation >= 1.80m)
+					{
+						if(quota >= 0.996m)
+						{
+							BinanceFutures.OnEntryPointDetected();
+						}
+						else
+						{
+							Console.WriteLine("Skip");
+						}
+					}
+					else
+					{
+						Console.WriteLine("Skip");
+					}
+				}
+				else
+				{
+					Console.WriteLine("Invalid Model");
+				}
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("CheckEntryPoint: " + exception.Message);
+			}
+		}
+
+		private static bool GetAverage(List<Candle> history, int window, out decimal average)
+		{
+			average = default;
+
+			try
+			{
+				int index = history.Count-3;
+
+				for(int i=index-window+1; i<index; ++i)
+				{
+					decimal price = history[i].Close;
+
+					average += price;
+				}
+
+				average /= window;
+
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("GetAverage: " + exception.Message);
+
+				return false;
+			}
+		}
+
+		private static bool GetDeviation(List<Candle> history, int window, out decimal average, out decimal deviation)
+		{
+			average = default;
+
+			deviation = default;
+
+			try
+			{
+				int index = history.Count-3;
+
+				if(GetAverage(history, window, out average) == false)
+				{
+					return false;
+				}
+				
+				deviation = default;
+
+				for(int i=index-window+1; i<index; ++i)
+				{
+					decimal price = history[i].Close;
+
+					deviation += (price - average) * (price - average);
+				}
+
+				deviation = (decimal)Math.Sqrt((double)deviation / (window - 1));
+
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("GetDeviation: " + exception.Message);
+
+				return false;
+			}
+		}
+
+		private static bool GetDeviationFactor(List<Candle> history, int window, out decimal factor)
+		{
+			factor = default;
+
+			try
+			{
+				int index = history.Count-3;
+
+				if(GetDeviation(history, window, out decimal average, out decimal deviation) == false)
+				{
+					return false;
+				}
+
+				decimal delta = average - history[index].Close;
+
+				factor = delta / deviation;
+
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("GetDeviationFactor: " + exception.Message);
+
+				return false;
+			}
+		}
+
+		private static bool GetQuota(List<Candle> history, int window, out decimal quota)
+		{
+			quota = default;
+
+			try
+			{
+				decimal more = default;
+
+				decimal less = default;
+
+				int index = history.Count-1;
+
+				decimal price2 = history[index].Close;
+
+				for(int i=index-window+1; i<index; ++i)
+				{
+					decimal price1 = history[i].Close;
+
+					decimal delta = Math.Abs(price1 - price2);
+
+					if(price1 > price2)
+					{
+						more += delta;
+					}
+					else
+					{
+						less += delta;
+					}
+				}
+
+				if(more + less != default)
+				{
+					quota = more / (more + less);
+				}
+
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("GetQuota: " + exception.Message);
+
+				return false;
 			}
 		}
 
@@ -416,7 +596,7 @@ namespace RoverBot
 
 					for(int j=0; j<attempts; ++j)
 					{
-						var responce = client.Spot.Market.GetKlines(symbol, KlineInterval.OneMinute, startTime, limit:pageSize);
+						var responce = client.FuturesUsdt.Market.GetKlines(symbol, KlineInterval.OneMinute, startTime, limit:pageSize);
 						
 						if(responce.Success)
 						{
@@ -454,7 +634,7 @@ namespace RoverBot
 
 					for(int j=0; j<attempts; ++j)
 					{
-						var responce = client.Spot.Market.GetKlines(symbol, KlineInterval.OneMinute, startTime, limit:pageSize);
+						var responce = client.FuturesUsdt.Market.GetKlines(symbol, KlineInterval.OneMinute, startTime, limit:pageSize);
 						
 						if(responce.Success)
 						{
