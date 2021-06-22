@@ -17,9 +17,9 @@ using Timer = System.Timers.Timer;
 
 namespace RoverBot
 {
-	public static class WebSocketSpot
+	public static class WebSocketFutures
 	{
-		private static string Symbol = TradeBot.Symbol;
+		private const string Symbol = "BTCUSDT";
 
 		private static Timer InternalTimer = default;
 
@@ -110,7 +110,7 @@ namespace RoverBot
 
 		#endregion
 
-		static WebSocketSpot()
+		static WebSocketFutures()
 		{
 			try
 			{
@@ -128,7 +128,7 @@ namespace RoverBot
 			{
 				string symbol = Symbol.ToLower();
 
-				string url = "wss://stream.binance.com/stream?streams=" + symbol + "@bookTicker";
+				string url = "wss://fstream.binance.com/stream?streams=" + symbol + "@bookTicker";
 
 				WebSocket client = new WebSocket(url);
 
@@ -147,54 +147,6 @@ namespace RoverBot
 			catch(Exception exception)
 			{
 				Logger.Write("StartPriceStream: " + exception.Message);
-
-				return false;
-			}
-		}
-		
-		public static bool CheckHistory()
-		{
-			try
-			{
-				if(History == null)
-				{
-					return false;
-				}
-
-				if(History.Count != HistoryCount)
-				{
-					return false;
-				}
-
-				bool flag = false;
-
-				for(int i=0; i<HistoryCount-1; ++i)
-				{
-					if(History[i+1].CloseTime != History[i].CloseTime.AddMinutes(1.0))
-					{
-						if(flag)
-						{
-							Logger.Write("CheckHistory: Wrong Sequence");
-
-							return false;
-						}
-
-						flag = true;
-					}
-				}
-
-				const int PriceExpiration = 10;
-
-				if(PriceUpdationTime.AddSeconds(PriceExpiration) < DateTime.Now)
-				{
-					return false;
-				}
-
-				return true;
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("CheckHistory: " + exception.Message);
 
 				return false;
 			}
@@ -290,23 +242,6 @@ namespace RoverBot
 			}
 		}
 
-		private static void ResetHistory()
-		{
-			try
-			{
-				if(LoadHistory(Symbol, HistoryCount, out var history) == false)
-				{
-					return;
-				}
-
-				History = history;
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("ResetHistory: " + exception.Message);
-			}
-		}
-
 		private static void UpdateHistory()
 		{
 			try
@@ -372,6 +307,64 @@ namespace RoverBot
 				Logger.Write("UpdateHistory: " + exception.Message);
 
 				ResetHistory();
+			}
+		}
+
+		public static bool CheckHistory()
+		{
+			try
+			{
+				if(History == null)
+				{
+					return false;
+				}
+
+				if(History.Count != HistoryCount)
+				{
+					return false;
+				}
+
+				for(int i=default; i<HistoryCount-1; ++i)
+				{
+					if(History[i+1].CloseTime > History[i].CloseTime.AddSeconds(120.0))
+					{
+						Logger.Write("CheckHistory: Wrong Sequence");
+
+						return false;
+					}
+				}
+
+				const int PriceExpiration = 10;
+
+				if(PriceUpdationTime.AddSeconds(PriceExpiration) < DateTime.Now)
+				{
+					return false;
+				}
+
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("CheckHistory: " + exception.Message);
+
+				return false;
+			}
+		}
+
+		private static void ResetHistory()
+		{
+			try
+			{
+				if(LoadHistory(Symbol, HistoryCount, out var history) == false)
+				{
+					return;
+				}
+
+				History = history;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("ResetHistory: " + exception.Message);
 			}
 		}
 

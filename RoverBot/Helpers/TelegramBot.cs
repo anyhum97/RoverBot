@@ -13,7 +13,7 @@ namespace RoverBot
 {
 	public static class TelegramBot
 	{
-		private const string Token = "1817772026:AAHjEtcxB_o048CVGVuJlVaFjgPtPtU9rHo";
+		private const string Token = "1847090410:AAFOT1G0KlNUyh-DesCbVrlSythn-UVHx4k";
 
 		private static readonly TelegramBotClient Client = default;
 
@@ -146,112 +146,45 @@ namespace RoverBot
 
 				if(str == "start")
 				{
-					if(TradeBot.IsTrading == false)
-					{
-						TradeBot.IsTrading = true;
-						
-						Send("Торговля включена");
-					}
-					else
-					{
-						Send(chatId, "Торговля включена");
-					}
+					BinanceFutures.IsTrading = true;
 
+					Send("Торговля включена");
+					
 					return;
 				}
 				
 				if(str == "stop")
 				{
-					if(TradeBot.IsTrading == true)
-					{
-						TradeBot.IsTrading = false;
-						
-						Send("Торговля отключена");
-					}
-					else
-					{
-						Send(chatId, "Торговля отключена");
-					}
+					BinanceFutures.IsTrading = false;
+
+					Send("Торговля отключена");
 					
-					return;
-				}
-				
-				if(str.Contains("order") || str == "o")
-				{
-					int count = TradeBot.SellOrders.Count;
-
-					if(count == 0)
-					{
-						Send(chatId, "Нет открытых ордеров");
-
-						return;
-					}
-					
-					StringBuilder stringBuilder = new StringBuilder();
-					
-					const int window = 16;
-
-					for(int i=0; i<count && i<window; ++i)
-					{
-						stringBuilder.Append(TradeBot.SellOrders[i].Format());
-
-						stringBuilder.Append("\n\n");
-					}
-
-					if(count > window)
-					{
-						if(count-window <= 4)
-						{
-							switch(count-window)
-							{
-								case 1: stringBuilder.Append("И ещё 1 ордер..."); break;
-								case 2: stringBuilder.Append("И ещё 2 ордера..."); break;
-								case 3: stringBuilder.Append("И ещё 3 ордера..."); break;
-								case 4: stringBuilder.Append("И ещё 4 ордера..."); break;
-							}
-						}
-						else
-						{
-							stringBuilder.Append("И ещё ");
-							stringBuilder.Append(count-window);
-							stringBuilder.Append("ордеров...");
-						}
-
-						stringBuilder.Append("\n\n");
-					}
-
-					stringBuilder.Append("Текущая цена: " + Format(WebSocketSpot.CurrentPrice, TradeBot.PricePrecision));
-
-					Send(chatId, stringBuilder.ToString());
-
 					return;
 				}
 
 				if(str.Contains("balance") || str == "b")
 				{
 					StringBuilder stringBuilder = new StringBuilder();
-
+					
 					stringBuilder.Append("Balance: ");
-
-					stringBuilder.Append(Format(TradeBot.Balance1, TradeBot.CurrencyPrecision1));
+					stringBuilder.Append(Format(BinanceFutures.Balance, 2));
 					stringBuilder.Append(" ");
-					stringBuilder.Append(TradeBot.Currency1);
+					stringBuilder.Append(BinanceFutures.Currency1);
+					
 					stringBuilder.Append(", ");
-
-					stringBuilder.Append(Format(TradeBot.Balance2, TradeBot.CurrencyPrecision2));
-					stringBuilder.Append(" ");
-					stringBuilder.Append(TradeBot.Currency2);
-
-					stringBuilder.Append(", ");
-					stringBuilder.Append(Format(TradeBot.FeeCoins, TradeBot.CurrencyPrecision3));
-					stringBuilder.Append(" BNB");
-
+					stringBuilder.Append(Format(BinanceFutures.FeeBalance, 2));
+					stringBuilder.Append(" USDT for fees");
+					
+					stringBuilder.Append(", Frozen: ");
+					stringBuilder.Append(Format(BinanceFutures.Frozen, 2));
+					stringBuilder.Append(" " + BinanceFutures.Currency1);
+					
 					stringBuilder.Append(", Total: ");
-					stringBuilder.Append(Format(TradeBot.TotalBalance, TradeBot.CurrencyPrecision1));
-					stringBuilder.Append(" USDT");
+					stringBuilder.Append(Format(BinanceFutures.TotalBalance+BinanceFutures.FeeBalance, 2));
+					stringBuilder.Append(" " + BinanceFutures.Currency1);
 					
-					Send(chatId, stringBuilder.ToString());
-					
+					Send(stringBuilder.ToString());
+
 					return;
 				}
 			}

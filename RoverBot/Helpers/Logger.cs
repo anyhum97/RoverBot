@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading;
 using System.IO;
 
 namespace RoverBot
@@ -10,20 +9,20 @@ namespace RoverBot
 		
 		private const string LogFilePath = "RoverBot.txt";
 		
-		private const long MaxFileLength = 35267366;
-		
+		private static object LockFile = new object();
+
 		private static void Print(string str)
 		{
-			try
+			if(IsConsoleEnabled)
 			{
-				if(IsConsoleEnabled)
+				try
 				{
 					Console.Write(str);
 				}
-			}
-			catch
-			{
-				
+				catch
+				{
+					
+				}
 			}
 		}
 
@@ -34,18 +33,6 @@ namespace RoverBot
 				str = str.Replace('\n', ' ');
 
 				Print(str + "\n\n");
-
-				if(File.Exists(LogFilePath))
-				{
-					FileInfo fileInfo = new FileInfo(LogFilePath);
-					
-					if(fileInfo.Length > MaxFileLength)
-					{
-						File.Delete(LogFilePath);
-
-						Thread.Sleep(20);
-					}
-				}
 			}
 			catch(Exception exception)
 			{
@@ -54,9 +41,12 @@ namespace RoverBot
 			
 			try
 			{
-				string currentMoment = DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss ");
+				string time = DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss ");
 				
-				File.AppendAllText(LogFilePath, currentMoment + str + "\r\n\r\n");
+				lock(LockFile)
+				{
+					File.AppendAllText(LogFilePath, time + str + "\r\n\r\n");
+				}
 			}
 			catch(Exception exception)
 			{

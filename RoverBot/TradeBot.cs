@@ -1,23 +1,20 @@
 ﻿using System;
-using System.Threading;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using System.Globalization;
-using System.Timers;
-using System.Text;
+using System.Threading.Tasks;
+using System.Threading;
 using System.Linq;
 
 using Binance.Net;
 using Binance.Net.Enums;
-using Binance.Net.Objects.Spot.SpotData;
-
-using CryptoExchange.Net.Objects;
+using Binance.Net.Objects.Futures.FuturesData;
+using Binance.Net.Objects.Futures.MarketData;
 
 using Timer = System.Timers.Timer;
 
 namespace RoverBot
 {
-	public static class TradeBot
+	public static class BinanceFutures
 	{
 		public const string CheckLine = "******************************************************************************";
 
@@ -29,47 +26,43 @@ namespace RoverBot
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.7741";
+		public const string Version = "0.774";
 
 		public static string Symbol = Currency2 + Currency1;
-		
-		public const decimal ReduceStack = 1.0m;
-
-		public const decimal MinNotional = 10.0m;
 
 		public const decimal PriceFilter = 0.01m;
 
-		public const decimal VolumeFilter = 0.000001m;
-		
-		public const decimal StepSize = 0.000001m;
+		public const decimal VolumeFilter = 0.001m;
 
-		public const decimal Percent = 1.0127m;
-
-		public const int CurrencyPrecision1 = 2;
-
-		public const int CurrencyPrecision2 = 6;
-
-		public const int CurrencyPrecision3 = 6;
-
-		public const int NotionalPrecision = 4;
+		public const int DefaultLeverage = 10;
 
 		public const int PricePrecision = 2;
 
-		public const int VolumePrecision = 6;
+		public const int VolumePrecision = 3;
 
-		public static List<SellOrder> SellOrders { get; private set; } = default;
+		public static decimal LastBalance { get; private set; } = default;
 
-		public static decimal Balance1 { get; private set; } = default;
-
-		public static decimal Balance2 { get; private set; } = default;
+		public static decimal Balance { get; private set; } = default;
 
 		public static decimal TotalBalance { get; private set; } = default;
 
-		public static decimal FeeCoins { get; private set; } = default;
+		public static decimal Frozen { get; private set; } = default;
 
 		public static decimal FeePrice { get; private set; } = default;
 
-		public static bool IsTrading { get; set; } = default;
+		public static decimal FeeBalance { get; private set; } = default;
+
+		public static decimal FeeCoins { get; private set; } = default;
+
+		public static int CurrentLeverage { get; private set; } = default;
+
+		public static int MaxLeverage { get; private set; } = default;
+
+		public static bool InPosition { get; set; } = false;
+
+		public static bool State { get; private set; } = false;
+
+		public static bool IsTrading { get; set; } = false;
 
 		private static BinanceClient Client = default;
 
@@ -77,50 +70,49 @@ namespace RoverBot
 
 		private static Timer InternalTimer2 = default;
 
-		public static void Start()
+		static BinanceFutures()
 		{
 			try
 			{
 				Logger.Write(CheckLine);
 
-				Logger.Write("RoverBot Version " + Version + " Started");
+				Logger.Write("FuturesBot Version " + Version + " Started");
 
 				Client = new BinanceClient();
-
+				
 				Client.SetApiCredentials(ApiKey, SecretKey);
 				
-				SellOrders = new List<SellOrder>();
+				WebSocketFutures.StartPriceStream();
 				
-				WebSocketSpot.StartPriceStream();
-
 				TelegramBot.Start();
-
-				while(true)
+				
+				while(IsTrading == false)
 				{
-					if(UpdateFeePrice())
+					if(CheckPosition(Symbol))
 					{
-						if(UpdateBalance())
-						{
-							IsTrading = true;
-
-							break;
-						}
+						break;
 					}
+					
+					Thread.Sleep(1000);
 				}
-
-				WebSocketSpot.HistoryUpdated += OnHistoryUpdated;
+				
+				State = true;
+				
+				UpdateBalance();
+				
+				SetTradeParams();
 
 				StartInternalTimer1();
 
 				StartInternalTimer2();
-
-				CheckSellOrders();
 			}
 			catch(Exception exception)
 			{
-				Logger.Write("Start: " + exception.Message);
+				Logger.Write("BinanceFutures: " + exception.Message);
 
-				Client = null;
+				Client = default;
+
+				State = default;
 			}
 		}
 
@@ -128,6 +120,11 @@ namespace RoverBot
 		{
 			try
 			{
+				if(State == false)
+				{
+					return false;
+				}
+
 				if(Client == null)
 				{
 					return false;
@@ -142,209 +139,14 @@ namespace RoverBot
 				return false;
 			}
 		}
-
-		private static bool UpdateBalance()
-		{
-			try
-			{
-				if(Client == null)
-				{
-					return false;
-				}
-
-				decimal price = WebSocketSpot.CurrentPrice;
-
-				if(price == default)
-				{
-					Thread.Sleep(1000);
-
-					return false;
-				}
-
-				var response = Client.General.GetAccountInfo();
-
-				if(response.Success)
-				{
-					bool find1 = default;
-
-					bool find2 = default;
-
-					bool find3 = default;
-
-					bool updated1 = default;
-
-					bool updated2 = default;
-
-					bool updated3 = default;
-
-					decimal total1 = default;
-
-					decimal total2 = default;
-
-					foreach(var record in response.Data.Balances)
-					{
-						if(find1 == false)
-						{
-							if(record.Asset.Contains(Currency1))
-							{
-								decimal balance1 = record.Free;
-
-								if(balance1 != Balance1)
-								{
-									Balance1 = balance1;
-									
-									updated1 = true;
-								}
-
-								total1 = record.Total;
-
-								find1 = true;
-							}
-						}
-
-						if(find2 == false)
-						{
-							if(record.Asset.Contains(Currency2))
-							{
-								decimal balance2 = record.Free;
-
-								if(balance2 != Balance2)
-								{
-									Balance2 = balance2;
-									
-									updated2 = true;
-								}
-
-								total2 = record.Total;
-
-								find2 = true;
-							}
-						}
-
-						if(find3 == false)
-						{
-							if(record.Asset.Contains("BNB"))
-							{
-								decimal balance3 = record.Free;
-
-								if(balance3 != FeeCoins)
-								{
-									FeeCoins = balance3;
-									
-									updated3 = true;
-								}
-								
-								find3 = true;
-							}
-						}
-
-						if(find1 && find2 && find3)
-						{
-							TotalBalance = total1 + total2*price + FeeCoins*FeePrice;
-
-							if(updated1 || updated2 || updated3)
-							{
-								StringBuilder stringBuilder = new StringBuilder();
-
-								stringBuilder.Append("UpdateBalance: ");
-
-								stringBuilder.Append(Format(Balance1, CurrencyPrecision1));
-								stringBuilder.Append(" ");
-								stringBuilder.Append(Currency1);
-								stringBuilder.Append(", ");
-
-								stringBuilder.Append(Format(Balance2, CurrencyPrecision2));
-								stringBuilder.Append(" ");
-								stringBuilder.Append(Currency2);
-
-								stringBuilder.Append(", ");
-								stringBuilder.Append(Format(FeeCoins, CurrencyPrecision3));
-								stringBuilder.Append(" BNB");
-
-								stringBuilder.Append(", Total = ");
-								stringBuilder.Append(Format(TotalBalance, CurrencyPrecision1));
-								stringBuilder.Append(" USDT");
-
-								if(FeeCoins < 0.01m)
-								{
-									TelegramBot.Send("Малый остаток BNB монет");
-								}
-
-								Logger.Write(stringBuilder.ToString());
-							}
-
-							return true;
-						}
-					}
-
-					return false;
-				}
-				else
-				{
-					Logger.Write("UpdateBalance: Bad Request");
-
-					return false;
-				}
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("UpdateBalance: " + exception.Message);
-				
-				return false;
-			}
-		}
-
-		private static bool UpdateСurrencyInfo()
-		{
-			if(IsValid())
-			{
-				try
-				{
-					var request = Client.Spot.System.GetExchangeInfo();
-
-					if(request.Success)
-					{
-						foreach(var record in request.Data.Symbols)
-						{
-							if(record.Name.Contains(Symbol))
-							{
-								return true;
-							}
-						}
-						
-						Logger.Write("UpdateСurrencyInfo: Invalid Symbol");
-
-						return false;
-					}
-					else
-					{
-						Logger.Write("UpdateСurrencyInfo: Bad Request, Error = " + request.Error.Message);
-
-						return false;
-					}
-				}
-				catch(Exception exception)
-				{
-					Logger.Write("UpdateСurrencyInfo: " + exception.Message);
-
-					return false;
-				}
-			}
-			else
-			{
-				Logger.Write("UpdateСurrencyInfo: Invalid Account");
-
-				return false;
-			}
-		}
-
+		
 		private static void StartInternalTimer1()
 		{
 			try
 			{
 				InternalTimer1 = new Timer();
 
-				InternalTimer1.Interval = 30000;
+				InternalTimer1.Interval = 20000;
 
 				InternalTimer1.Elapsed += InternalTimerElapsed1;
 
@@ -362,7 +164,7 @@ namespace RoverBot
 			{
 				InternalTimer2 = new Timer();
 
-				InternalTimer2.Interval = 60000;
+				InternalTimer2.Interval = 600000;
 
 				InternalTimer2.Elapsed += InternalTimerElapsed2;
 
@@ -374,15 +176,15 @@ namespace RoverBot
 			}
 		}
 
-		private static void InternalTimerElapsed1(object sender, ElapsedEventArgs e)
+		private static void InternalTimerElapsed1(object sender, System.Timers.ElapsedEventArgs e)
 		{
 			try
 			{
 				Task.Run(() =>
 				{
-					UpdateBalance();
+					CheckPosition(Symbol);
 
-					CheckSellOrders();
+					UpdateBalance();
 				});
 			}
 			catch(Exception exception)
@@ -391,13 +193,13 @@ namespace RoverBot
 			}
 		}
 
-		private static void InternalTimerElapsed2(object sender, ElapsedEventArgs e)
+		private static void InternalTimerElapsed2(object sender, System.Timers.ElapsedEventArgs e)
 		{
 			try
 			{
 				Task.Run(() =>
 				{
-					UpdateFeePrice();
+					SetTradeParams();
 				});
 			}
 			catch(Exception exception)
@@ -406,739 +208,412 @@ namespace RoverBot
 			}
 		}
 
-		private static void OnHistoryUpdated()
+		public static void OnShortEntryPointDetected(decimal depositFactor)
 		{
 			try
 			{
 				if(IsValid())
 				{
-					bool state = true;
-
-					decimal deviation = default;
-
-					decimal quota = default;
-
-					state = state && GetDeviationFactor(WebSocketSpot.History, 120, out deviation);
-
-					state = state && GetQuota(WebSocketSpot.History, 32, out quota);
-
-					if(state)
+					if(IsTrading)
 					{
-						if(deviation >= 1.70m)
+						if(InPosition == false)
 						{
-							if(quota >= 0.996m)
+							if(CurrentLeverage == DefaultLeverage)
 							{
-								if(Balance1 >= MinNotional + ReduceStack)
+								if(depositFactor > 0.0m && depositFactor <= 1.0m)
 								{
-									decimal buyPrice = WebSocketSpot.CurrentPrice;
+									decimal price = WebSocketFutures.CurrentPrice;
 
-									decimal sellPrice = Percent * WebSocketSpot.History.Last().Close;
+									decimal takeProfit = Math.Round(0.9936m * price, 2);
 
-									Buy(buyPrice, sellPrice);
-								}
-								else
-								{
-									Console.WriteLine("Entry Point");
+									decimal stopLoss = Math.Round(1.004m * price, 2);
+
+									decimal deposit = depositFactor * Balance;
+
+									deposit = Math.Min(deposit, 400.0m);
+
+									decimal volume = deposit * CurrentLeverage / price;
+
+									volume = Math.Round(volume, VolumePrecision);
+
+									PlaceShortOrder(Symbol, volume, takeProfit, stopLoss);
+
+									CheckPosition(Symbol);
+
+									UpdateBalance();
 								}
 							}
 							else
 							{
-								Console.WriteLine("Skip");
+								TelegramBot.Send("Установлено неверное плечо (" + CurrentLeverage + ")");
+
+								Logger.Write("Invalid Leverage");
 							}
 						}
 						else
 						{
-							Console.WriteLine("Skip");
+							Logger.Write("Already In Position");
 						}
 					}
 					else
 					{
-						Console.WriteLine("Invalid Model");
-					}
-				}
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("OnHistoryUpdated: " + exception.Message);
-			}
-		}
-
-		private static bool GetAverage(List<Candle> history, int window, out decimal average)
-		{
-			average = default;
-
-			try
-			{
-				int index = history.Count-3;
-
-				for(int i=index-window+1; i<index; ++i)
-				{
-					decimal price = history[i].Close;
-
-					average += price;
-				}
-
-				average /= window;
-
-				return true;
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("GetAverage: " + exception.Message);
-
-				return false;
-			}
-		}
-
-		private static bool GetDeviation(List<Candle> history, int window, out decimal average, out decimal deviation)
-		{
-			average = default;
-
-			deviation = default;
-
-			try
-			{
-				int index = history.Count-3;
-
-				if(GetAverage(history, window, out average) == false)
-				{
-					return false;
-				}
-				
-				deviation = default;
-
-				for(int i=index-window+1; i<index; ++i)
-				{
-					decimal price = history[i].Close;
-
-					deviation += (price - average) * (price - average);
-				}
-
-				deviation = (decimal)Math.Sqrt((double)deviation / (window - 1));
-
-				return true;
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("GetDeviation: " + exception.Message);
-
-				return false;
-			}
-		}
-
-		private static bool GetDeviationFactor(List<Candle> history, int window, out decimal factor)
-		{
-			factor = default;
-
-			try
-			{
-				int index = history.Count-3;
-
-				if(GetDeviation(history, window, out decimal average, out decimal deviation) == false)
-				{
-					return false;
-				}
-
-				decimal delta = average - history[index].Close;
-
-				factor = delta / deviation;
-
-				return true;
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("GetDeviationFactor: " + exception.Message);
-
-				return false;
-			}
-		}
-
-		private static bool GetQuota(List<Candle> history, int window, out decimal quota)
-		{
-			quota = default;
-
-			try
-			{
-				decimal more = default;
-
-				decimal less = default;
-
-				int index = history.Count-1;
-
-				decimal price2 = history[index].Close;
-
-				for(int i=index-window+1; i<index; ++i)
-				{
-					decimal price1 = history[i].Close;
-
-					decimal delta = Math.Abs(price1 - price2);
-
-					if(price1 > price2)
-					{
-						more += delta;
-					}
-					else
-					{
-						less += delta;
-					}
-				}
-
-				if(more + less != default)
-				{
-					quota = more / (more + less);
-				}
-
-				return true;
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("GetQuota: " + exception.Message);
-
-				return false;
-			}
-		}
-
-		public static bool Buy(decimal buyPrice, decimal sellPrice)
-		{
-			try
-			{
-				if(IsValid())
-				{
-					Logger.Write(CheckLine);
-
-					Logger.Write("Buy: Balance = " + Format(Balance1, 2));
-
-					if(Balance1 < MinNotional + ReduceStack)
-					{
-						Logger.Write("Buy: Invalid Balance");
-						
-						Logger.Write(CheckLine);
-
-						return false;
-					}
-					
-					if(buyPrice <= 0.0m)
-					{
-						Logger.Write("Buy: BuyPrice <= 0.0");
-						
-						Logger.Write(CheckLine);
-
-						return false;
-					}
-					
-					if(sellPrice <= buyPrice)
-					{
-						Logger.Write("Buy: SellPrice <= BuyPrice");
-						
-						Logger.Write(CheckLine);
-
-						return false;
-					}
-
-					decimal sellFactor = (sellPrice-buyPrice)/buyPrice;
-
-					decimal volume = (Balance1-ReduceStack)/buyPrice;
-					
-					decimal notional = default;
-
-					if(PlaceBuyOrder(ref volume, ref buyPrice, ref notional, out long buyId))
-					{
-						const int attempts = 3;
-
-						for(int i=0; i<attempts; ++i)
-						{
-							if(PlaceSellOrder(ref volume, ref sellPrice, ref notional, out long sellOrderId))
-							{
-								StringBuilder stringBuilder = new StringBuilder();
-
-								stringBuilder.Append("Я купил ");
-								stringBuilder.Append(Format(volume, VolumePrecision));
-								stringBuilder.Append(" монеты ");
-								stringBuilder.Append(Currency2);
-								stringBuilder.Append(" по цене ");
-								stringBuilder.Append(Format(buyPrice, PricePrecision));
-								stringBuilder.Append(" и установил наценку в ");
-								stringBuilder.Append(Format(100.0m*sellFactor, 2));
-								stringBuilder.Append("%");
-								
-								TelegramBot.Send(stringBuilder.ToString());
-
-								Logger.Write("BuyStack: Success");
-
-								Logger.Write(CheckLine);
-
-								UpdateFeePrice();
-
-								UpdateBalance();
-
-								return true;
-							}
-						}
-						
-						StringBuilder sellOrderError = new StringBuilder();
-
-						sellOrderError.Append("Я купил ");
-						sellOrderError.Append(Format(volume, VolumePrecision));
-						sellOrderError.Append(" монеты ");
-						sellOrderError.Append(Currency2);
-						sellOrderError.Append(" по цене ");
-						sellOrderError.Append(Format(buyPrice, PricePrecision));
-						sellOrderError.Append(", но мне не удалось выставить ордер на продажу.\n\n");
-						sellOrderError.Append("Цена продажи: ");
-
-						sellOrderError.Append(Format(sellPrice, PricePrecision));
-
-						TelegramBot.Send(sellOrderError.ToString());
-
-						Logger.Write("BuyStack: Invalid Sell Order");
-
-						Logger.Write(CheckLine);
-
-						UpdateFeePrice();
-
-						UpdateBalance();
-
-						return false;
-					}
-					else
-					{
-						Logger.Write("BuyStack: Can Not Place Buy Order");
-						
-						Logger.Write(CheckLine);
-
-						return false;
+						Logger.Write("EntryPoint");
 					}
 				}
 				else
 				{
-					Logger.Write("BuyStack: Invalid Account");
-
-					return false;
+					Logger.Write("EntryPoint");
 				}
 			}
 			catch(Exception exception)
 			{
-				Logger.Write("BuyStack: " + exception.Message);
-				
-				return false;
+				Logger.Write("OnShortEntryPointDetected: " + exception.Message);
 			}
 		}
 
-		private static bool PlaceBuyOrder(ref decimal volume, ref decimal price, ref decimal notional, out long orderId)
+		public static void OnLongEntryPointDetected(decimal depositFactor)
 		{
-			orderId = default;
-
 			try
 			{
 				if(IsValid())
 				{
-					if(ValidateTradeParams(ref volume, ref price, ref notional))
+					if(IsTrading)
 					{
-						WebCallResult<BinancePlacedOrder> request = Client.Spot.Order.PlaceOrder(Symbol, OrderSide.Buy, OrderType.Market, volume);
-
-						if(request.Success)
+						if(InPosition == false)
 						{
-							orderId = request.Data.OrderId;
-
-							StringBuilder stringBuilder = new StringBuilder();
-
-							stringBuilder.Append("PlaceBuyOrder: Volume = ");
-							stringBuilder.Append(Point(volume));
-
-							stringBuilder.Append(", Price = ");
-							stringBuilder.Append(Point(price));
-
-							stringBuilder.Append(", Notional = ");
-							stringBuilder.Append(Format(notional, NotionalPrecision));
-
-							stringBuilder.Append(", Id = ");
-							stringBuilder.Append(orderId);
-
-							Logger.Write(stringBuilder.ToString());
-
-							if(request.Data.Status == OrderStatus.Filled)
+							if(CurrentLeverage == DefaultLeverage)
 							{
-								Logger.Write("PlaceBuyOrder: Filled");
+								if(depositFactor > 0.0m && depositFactor <= 1.0m)
+								{
+									decimal price = WebSocketFutures.CurrentPrice;
 
-								return true;
+									decimal takeProfit = Math.Round(1.0062m * price, 2);
+
+									decimal stopLoss = Math.Round(0.996m * price, 2);
+
+									decimal deposit = depositFactor * Balance;
+
+									deposit = Math.Min(deposit, 400.0m);
+
+									decimal volume = deposit * CurrentLeverage / price;
+
+									volume = Math.Round(volume, VolumePrecision);
+
+									PlaceLongOrder(Symbol, volume, takeProfit, stopLoss);
+
+									CheckPosition(Symbol);
+
+									UpdateBalance();
+								}
 							}
 							else
 							{
-								Logger.Write("PlaceBuyOrder: " + request.Data.Status);
+								TelegramBot.Send("Установлено неверное плечо (" + CurrentLeverage + ")");
 
-								return false;
+								Logger.Write("Invalid Leverage");
 							}
 						}
 						else
 						{
-							StringBuilder errorLog = new StringBuilder();
-
-							errorLog.Append("PlaceBuyOrder: Volume = ");
-							errorLog.Append(Point(volume));
-							errorLog.Append(" " + Currency2);
-							
-							errorLog.Append(", Price = ");
-							errorLog.Append(Point(price));
-							errorLog.Append(" " + Currency1);
-							
-							errorLog.Append(", Notional = ");
-							errorLog.Append(Point(notional));
-
-							errorLog.Append(", Error = ");
-
-							errorLog.Append(request.Error.Message);
-
-							Logger.Write(errorLog.ToString());
-
-							return false;
+							Logger.Write("Already InPosition");
 						}
 					}
 					else
 					{
-						Logger.Write("PlaceBuyOrder: Invalid Order");
-
-						return false;
+						Logger.Write("EntryPoint");
 					}
 				}
 				else
 				{
-					Logger.Write("PlaceBuyOrder: Invalid Account");
-
-					return false;
+					Logger.Write("EntryPoint");
 				}
 			}
 			catch(Exception exception)
 			{
-				StringBuilder exceptionLog = new StringBuilder();
-				
-				exceptionLog.Append("PlaceBuyOrder: Volume = ");
-				exceptionLog.Append(Point(volume));
-				exceptionLog.Append(" " + Currency2);
-				
-				exceptionLog.Append(", Price = ");
-				exceptionLog.Append(Point(price));
-				exceptionLog.Append(" " + Currency1);
-				
-				exceptionLog.Append(", Exception = ");
-				
-				exceptionLog.Append(exception.Message);
-				
-				Logger.Write(exceptionLog.ToString());
-				
-				return false;
+				Logger.Write("OnLongEntryPointDetected: " + exception.Message);
 			}
 		}
 
-		private static bool PlaceSellOrder(ref decimal volume, ref decimal price, ref decimal notional, out long orderId)
-		{
-			orderId = default;
-
-			try
-			{
-				if(IsValid())
-				{
-					if(ValidateTradeParams(ref volume, ref price, ref notional))
-					{
-						WebCallResult<BinancePlacedOrder> request = Client.Spot.Order.PlaceOrder(Symbol, OrderSide.Sell, OrderType.Limit, volume, price:price, timeInForce:TimeInForce.GoodTillCancel);
-
-						if(request.Success)
-						{
-							orderId = request.Data.OrderId;
-
-							StringBuilder stringBuilder = new StringBuilder();
-
-							stringBuilder.Append("PlaceSellOrder: Volume = ");
-							stringBuilder.Append(Point(volume));
-
-							stringBuilder.Append(", Price = ");
-							stringBuilder.Append(Point(price));
-
-							stringBuilder.Append(", Notional = ");
-							stringBuilder.Append(Format(notional, NotionalPrecision));
-
-							stringBuilder.Append(", Id = ");
-							stringBuilder.Append(orderId);
-
-							Logger.Write(stringBuilder.ToString());
-
-							if(request.Data.Status == OrderStatus.New)
-							{
-								Logger.Write("PlaceSellOrder: Placed");
-
-								return true;
-							}
-
-							if(request.Data.Status == OrderStatus.Filled)
-							{
-								Logger.Write("PlaceSellOrder: Filled");
-
-								return true;
-							}
-
-							Logger.Write("PlaceSellOrder: " + request.Data.Status);
-
-							return false;
-						}
-						else
-						{
-							StringBuilder errorLog = new StringBuilder();
-
-							errorLog.Append("PlaceSellOrder: Volume = ");
-							errorLog.Append(Point(volume));
-							errorLog.Append(" " + Currency2);
-							
-							errorLog.Append(", Price = ");
-							errorLog.Append(Point(price));
-							errorLog.Append(" " + Currency1);
-							
-							errorLog.Append(", Notional = ");
-							errorLog.Append(Point(notional));
-
-							errorLog.Append(", Error = ");
-							errorLog.Append(request.Error.Message);
-
-							Logger.Write(errorLog.ToString());
-
-							return false;
-						}
-					}
-					else
-					{
-						Logger.Write("PlaceSellOrder: Invalid Order");
-
-						return false;
-					}
-				}
-				else
-				{
-					Logger.Write("PlaceSellOrder: Invalid Account");
-
-					return false;
-				}
-			}
-			catch(Exception exception)
-			{
-				StringBuilder exceptionLog = new StringBuilder();
-				
-				exceptionLog.Append("PlaceSellOrder: Volume = ");
-				exceptionLog.Append(Point(volume));
-				exceptionLog.Append(" " + Currency2);
-				
-				exceptionLog.Append(", Price = ");
-				exceptionLog.Append(Point(price));
-				exceptionLog.Append(" " + Currency1);
-				
-				exceptionLog.Append(", Exception = ");
-				exceptionLog.Append(exception.Message);
-				
-				Logger.Write(exceptionLog.ToString());
-				
-				return false;
-			}
-		}
-
-		private static bool ValidateTradeParams(ref decimal volume, ref decimal price, ref decimal notional)
-		{
-			try
-			{
-				StringBuilder inputParams = new StringBuilder();
-				
-				inputParams.Append("ValidateTradeParams: Volume = ");
-				inputParams.Append(Format(volume, VolumePrecision));
-				inputParams.Append(", Price = ");
-				inputParams.Append(Format(price, PricePrecision));
-				inputParams.Append(", Notional = ");
-				inputParams.Append(Format(price*volume, NotionalPrecision));
-				
-				Logger.Write(inputParams.ToString());
-				
-				if(volume <= 0.0m)
-				{
-					Logger.Write("ValidateTradeParams: Volume <= 0.0");
-					
-					return false;
-				}
-				
-				if(price <= 0.0m)
-				{
-					Logger.Write("ValidateTradeParams: Price <= 0.0");
-				
-					return false;
-				}
-				
-				if(PriceFilter == 0.0m)
-				{
-					Logger.Write("ValidateTradeParams: PriceFilter == 0.0");
-					
-					return false;
-				}
-				
-				if(StepSize == 0.0m)
-				{
-					Logger.Write("ValidateTradeParams: StepSize == 0.0");
-					
-					return false;
-				}
-				
-				if(PricePrecision < 0 || PricePrecision > 8)
-				{
-					Logger.Write("ValidateTradeParams: Invalid PricePrecision");
-					
-					return false;
-				}
-				
-				if(VolumePrecision < 0 || VolumePrecision > 8)
-				{
-					Logger.Write("ValidateTradeParams: Invalid VolumePrecision");
-					
-					return false;
-				}
-				
-				if(NotionalPrecision < 0 || NotionalPrecision > 8)
-				{
-					Logger.Write("ValidateTradeParams: Invalid NotionalPrecision");
-				}
-				
-				if(price % PriceFilter != 0.0m)
-				{
-					price = price - price % PriceFilter + PriceFilter;
-				}
-				
-				price = Math.Round(price, PricePrecision);
-				
-				if(volume % StepSize != 0.0m)
-				{
-					volume = volume - volume % StepSize + StepSize;
-				}
-				
-				volume = Math.Round(volume, VolumePrecision);
-				
-				notional = price*volume;
-				
-				if(notional < MinNotional)
-				{
-					volume = (MinNotional+StepSize) / price;
-				}
-				
-				if(volume % StepSize != 0.0m)
-				{
-					volume = volume - volume % StepSize + StepSize;
-				}
-				
-				volume = Math.Round(volume, VolumePrecision);
-				
-				StringBuilder outputParams = new StringBuilder();
-				
-				outputParams.Append("ValidateTradeParams: Volume = ");
-				outputParams.Append(Point(volume));
-				outputParams.Append(", Price = ");
-				outputParams.Append(Point(price));
-				outputParams.Append(" Notional = ");
-				outputParams.Append(Format(notional, NotionalPrecision));
-				
-				Logger.Write(outputParams.ToString());
-				
-				return true;
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("ValidateTradeParams: " + exception.Message);
-
-				return false;
-			}
-		}
-		
-		private static bool CheckSellOrders()
+		private static bool PlaceShortOrder(string symbol, decimal volume, decimal takeProfit, decimal stopLoss)
 		{
 			try
 			{
 				if(IsValid())
 				{
-					var response = Client.Spot.Order.GetAllOrders(Symbol, startTime:DateTime.Now.AddMonths(-1).ToUniversalTime());
-
-					if(response.Success)
+					if(WebSocketFutures.CurrentPrice > 0.0m)
 					{
-						bool update = default;
-
-						foreach(var order in response.Data)
+						if(symbol == null)
 						{
-							if(order.Side == OrderSide.Sell)
-							{
-								int index = default;
-								
-								bool find = default;
-
-								for(int i=0; i<SellOrders.Count; ++i)
-								{
-									if(SellOrders[i].OrderId == order.OrderId)
-									{
-										find = true;
-
-										index = i;
-
-										break;
-									}
-								}
-
-								if(order.Status == OrderStatus.New)
-								{
-									if(find == false)
-									{
-										SellOrders.Add(new SellOrder(order.OrderId, order.Quantity, order.Price));
-									}
-								}
-								else
-								{
-									if(find)
-									{
-										if(order.Status == OrderStatus.Filled)
-										{
-											Logger.Write("Sell Order #" + order.OrderId + " Was Filled");
-
-											TelegramBot.Send(SellOrders[index].Filled());
-
-											update = true;
-										}
-										else
-										{
-											Logger.Write("Sell Order #" + order.OrderId + " Was " + order.Status);
-										}
-
-										SellOrders.RemoveAt(index);
-									}
-								}
-							}
+							return false;
 						}
 						
-						if(update == false)
+						volume = Math.Round(volume, VolumePrecision);
+						
+						if(volume < VolumeFilter)
 						{
-							UpdateFeePrice();
+							return false;
 						}
 
+						decimal price = WebSocketFutures.CurrentPrice;
+
+						takeProfit = Math.Round(takeProfit, PricePrecision);
+
+						stopLoss = Math.Round(stopLoss, PricePrecision);
+						
+						if(takeProfit >= price)
+						{
+							return false;
+						}
+
+						if(stopLoss <= price)
+						{
+							return false;
+						}
+
+						var orders = new BinanceFuturesBatchOrder[3];
+						
+						orders[0] = new BinanceFuturesBatchOrder()
+						{
+							Symbol = symbol,
+							Side = OrderSide.Sell,
+							Type = OrderType.Market,
+							PositionSide = PositionSide.Both,
+							Quantity = volume,
+							ReduceOnly = false,
+						};
+						
+						orders[1] = new BinanceFuturesBatchOrder()
+						{
+							Symbol = symbol,
+							Side = OrderSide.Buy,
+							Type = OrderType.StopMarket,
+							PositionSide = PositionSide.Both,
+							TimeInForce = TimeInForce.GoodTillCancel,
+							ActivationPrice = stopLoss,
+							StopPrice = stopLoss,
+							Quantity = volume,
+							ReduceOnly = true,
+						};
+
+						orders[2] = new BinanceFuturesBatchOrder()
+						{
+							Symbol = symbol,
+							Side = OrderSide.Buy,
+							Type = OrderType.TakeProfitMarket,
+							PositionSide = PositionSide.Both,
+							TimeInForce = TimeInForce.GoodTillCancel,
+							ActivationPrice = takeProfit,
+							StopPrice = takeProfit,
+							Quantity = volume,
+							ReduceOnly = true,
+						};
+						
+						var responce = Client.FuturesUsdt.Order.PlaceMultipleOrders(orders);
+						
+						if(responce.Success)
+						{
+							var data = responce.Data.ToArray();
+							
+							foreach(var record in data)
+							{
+								if(record.Success == false)
+								{
+									Logger.Write("PlaceShortOrder: " + record.Error.Message);
+								}
+							}
+							
+							Logger.Write("PlaceShortOrder: Success (Price = " + Format(price, PricePrecision) + ")");
+
+							TelegramBot.Send("Short Order");
+
+							return true;
+						}
+						else
+						{
+							Logger.Write("PlaceShortOrder: " + responce.Error.Message);
+							
+							CancelAllOrders(symbol);
+							
+							return false;
+						}
+					}
+					else
+					{
+						Logger.Write("PlaceShortOrder: Invalid Price");
+						
+						return false;
+					}
+				}
+				else
+				{
+					Logger.Write("PlaceShortOrder: Invalid Account");
+					
+					return false;
+				}
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("PlaceShortOrder: " + exception.Message);
+
+				return false;
+			}
+		}
+
+		private static bool PlaceLongOrder(string symbol, decimal volume, decimal takeProfit, decimal stopLoss)
+		{
+			try
+			{
+				if(IsValid())
+				{
+					if(WebSocketFutures.CurrentPrice > 0.0m)
+					{
+						if(symbol == null)
+						{
+							return false;
+						}
+						
+						volume = Math.Round(volume, VolumePrecision);
+						
+						if(volume < VolumeFilter)
+						{
+							return false;
+						}
+
+						decimal price = WebSocketFutures.CurrentPrice;
+
+						takeProfit = Math.Round(takeProfit, PricePrecision);
+
+						stopLoss = Math.Round(stopLoss, PricePrecision);
+						
+						if(takeProfit <= price)
+						{
+							return false;
+						}
+
+						if(stopLoss >= price)
+						{
+							return false;
+						}
+
+						var orders = new BinanceFuturesBatchOrder[3];
+						
+						orders[0] = new BinanceFuturesBatchOrder()
+						{
+							Symbol = symbol,
+							Side = OrderSide.Buy,
+							Type = OrderType.Market,
+							PositionSide = PositionSide.Both,
+							Quantity = volume,
+							ReduceOnly = false,
+						};
+						
+						orders[1] = new BinanceFuturesBatchOrder()
+						{
+							Symbol = symbol,
+							Side = OrderSide.Sell,
+							Type = OrderType.StopMarket,
+							PositionSide = PositionSide.Both,
+							TimeInForce = TimeInForce.GoodTillCancel,
+							ActivationPrice = stopLoss,
+							StopPrice = stopLoss,
+							Quantity = volume,
+							ReduceOnly = true,
+						};
+
+						orders[2] = new BinanceFuturesBatchOrder()
+						{
+							Symbol = symbol,
+							Side = OrderSide.Sell,
+							Type = OrderType.TakeProfitMarket,
+							PositionSide = PositionSide.Both,
+							TimeInForce = TimeInForce.GoodTillCancel,
+							ActivationPrice = takeProfit,
+							StopPrice = takeProfit,
+							Quantity = volume,
+							ReduceOnly = true,
+						};
+						
+						var responce = Client.FuturesUsdt.Order.PlaceMultipleOrders(orders);
+						
+						if(responce.Success)
+						{
+							var data = responce.Data.ToArray();
+							
+							foreach(var record in data)
+							{
+								if(record.Success == false)
+								{
+									Logger.Write("PlaceLongOrder: " + record.Error.Message);
+								}
+							}
+							
+							Logger.Write("PlaceLongOrder: Success (Price = " + Format(price, PricePrecision) + ")");
+
+							TelegramBot.Send("Long Order");
+
+							return true;
+						}
+						else
+						{
+							Logger.Write("PlaceLongOrder: " + responce.Error.Message);
+							
+							CancelAllOrders(symbol);
+							
+							return false;
+						}
+					}
+					else
+					{
+						Logger.Write("PlaceLongOrder: Invalid Price");
+						
+						return false;
+					}
+				}
+				else
+				{
+					Logger.Write("PlaceLongOrder: Invalid Account");
+					
+					return false;
+				}
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("PlaceLongOrder: " + exception.Message);
+
+				return false;
+			}
+		}
+
+		private static bool CancelAllOrders(string symbol)
+		{
+			try
+			{
+				const int attempts = 3;
+
+				for(int i=0; i<attempts; ++i)
+				{
+					var responce = Client.FuturesUsdt.Order.CancelAllOrders(symbol);
+
+					if(responce.Success)
+					{
 						return true;
 					}
 					else
 					{
-						Logger.Write("CheckSellOrders: " + response.Error.Message);
-
-						return false;
+						Logger.Write("CancelAllOrders: " + responce.Error.Message);
 					}
 				}
-				else
-				{
-					Logger.Write("CheckSellOrders: Invalid Account");
 
-					return false;
-				}
+				return false;
 			}
 			catch(Exception exception)
 			{
-				Logger.Write("CheckSellOrders: " + exception.Message);
-				
+				Logger.Write("CancelAllOrders: " + exception.Message);
+
 				return false;
 			}
 		}
-		
+
 		private static bool UpdateFeePrice()
 		{
 			try
@@ -1166,6 +641,379 @@ namespace RoverBot
 			}
 		}
 
+		private static bool UpdateBalance()
+		{
+			try
+			{
+				if(IsValid())
+				{
+					var responce = Client.FuturesUsdt.Account.GetBalance();
+
+					if(responce.Success)
+					{
+						var list = responce.Data.ToList();
+
+						for(int i=0; i<list.Count; ++i)
+						{
+							if(list[i].Asset == Currency1)
+							{
+								if(TotalBalance != LastBalance)
+								{
+									LastBalance = TotalBalance;
+								}
+
+								Balance = list[i].CrossWalletBalance;
+
+								TotalBalance = list[i].Balance;
+
+								Frozen = TotalBalance - Balance;
+
+								return true;
+							}
+
+							if(list[i].Asset == "BNB")
+							{
+								FeeCoins = list[i].Balance;
+
+								if(FeePrice > 0.0m)
+								{
+									FeeBalance = FeePrice * FeeCoins;
+								}
+								else
+								{
+									UpdateFeePrice();
+								}
+							}
+						}
+
+						return false;
+					}
+					else
+					{
+						Logger.Write("UpdateBalance: Bad Request");
+
+						return false;
+					}
+				}
+				else
+				{
+					Logger.Write("UpdateBalance: Invalid Account");
+
+					return false;
+				}
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("UpdateBalance: " + exception.Message);
+
+				return false;
+			}
+		}
+
+		private static bool GetMaxLeverage()
+		{
+			try
+			{
+				if(IsValid())
+				{
+					var result = Client.FuturesUsdt.GetBrackets(Symbol);
+
+					if(result.Success)
+					{
+						MaxLeverage = default;
+
+						List<BinanceFuturesSymbolBracket> list = result.Data.ToList();
+
+						foreach(var record in list)
+						{
+							foreach(var bracket in record.Brackets)
+							{
+								if(bracket.InitialLeverage > MaxLeverage)
+								{
+									MaxLeverage = bracket.InitialLeverage;
+								}
+							}
+						}
+
+						return true;
+					}
+					else
+					{
+						Logger.Write("GetMaxLeverage: " + result.Error);
+
+						return false;
+					}
+				}
+				else
+				{
+					Logger.Write("GetMaxLeverage: Invalid Account");
+
+					return false;
+				}
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("GetMaxLeverage: " + exception.Message);
+				
+				return false;
+			}
+		}
+
+		private static bool UpdateMaxLeverage()
+		{
+			try
+			{
+				if(IsValid())
+				{
+					if(MaxLeverage > 0)
+					{
+						return true;
+					}
+					else
+					{
+						bool success = false;
+
+						const int attempts = 3;
+
+						for(int i = 0; i<attempts; ++i)
+						{
+							success = GetMaxLeverage();
+
+							if(success)
+							{
+								break;
+							}
+						}
+
+						return success;
+					}
+				}
+				else
+				{
+					Logger.Write("UpdateMaxLeverage: Invalid Account");
+
+					return false;
+				}
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("UpdateMaxLeverage: " + exception.Message);
+
+				return false;
+			}
+		}
+
+		private static bool SetLeverage(int leverage)
+		{
+			try
+			{
+				if(IsValid())
+				{
+					UpdateMaxLeverage();
+
+					if(leverage < 1 || leverage > MaxLeverage)
+					{
+						Logger.Write("SetLeverage: Invalid Leverage");
+
+						return false;
+					}
+
+					var result = Client.FuturesUsdt.ChangeInitialLeverage(Symbol, leverage);
+
+					if(result.Success)
+					{
+						if(result.Data.Leverage == leverage)
+						{
+							CurrentLeverage = leverage;
+
+							return true;
+						}
+						else
+						{
+							return false;
+						}
+					}
+					else
+					{
+						Logger.Write("SetLeverage: " + result.Error);
+
+						return false;
+					}
+				}
+				else
+				{
+					Logger.Write("SetLeverage: Invalid Account");
+
+					return false;
+				}
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("SetLeverage: " + exception.Message);
+
+				return false;
+			}
+		}
+
+		private static bool SetIsolatedTrading()
+		{
+			try
+			{
+				if(IsValid())
+				{
+					var result = Client.FuturesUsdt.ChangeMarginType(Symbol, FuturesMarginType.Isolated);
+
+					if(result.Success)
+					{
+						return true;
+					}
+					else
+					{
+						if(result.Error.Message.Contains("No need to change margin type"))
+						{
+							return true;
+						}
+						else
+						{
+							Logger.Write("SetIsolatedTrading: " + result.Error);
+
+							return false;
+						}
+					}
+				}
+				else
+				{
+					Logger.Write("SetIsolatedTrading: Invalid Account");
+
+					return false;
+				}
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("SetIsolatedTrading: " + exception.Message);
+
+				return false;
+			}
+		}
+		
+		private static bool CheckPosition(string symbol)
+		{
+			try
+			{
+				var responce = Client.FuturesUsdt.GetPositionInformation(symbol);
+
+				if(responce.Success)
+				{
+					IsTrading = true;
+
+					if(responce.Data.ToList().First().IsolatedMargin == 0.0m)
+					{
+						if(InPosition)
+						{
+							UpdateFeePrice();
+
+							UpdateBalance();
+
+							NotifyUser();
+						}
+						
+						IsTrading = CancelAllOrders(Symbol);
+
+						InPosition = false;
+					}
+					else
+					{
+						InPosition = true;
+					}
+
+					return true;
+				}
+				else
+				{
+					IsTrading = false;
+
+					Logger.Write("CheckPosition: " + responce.Error.Message);
+
+					return false;
+				}
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("CheckPosition: " + exception.Message);
+
+				return false;
+			}
+		}
+		
+		private static bool NotifyUser()
+		{
+			try
+			{
+				if(TotalBalance > LastBalance)
+				{
+					TelegramBot.Send("Сделка прошла успешно");
+				}
+
+				if(TotalBalance < LastBalance)
+				{
+					TelegramBot.Send("Сделка провалена");
+				}
+
+				const decimal feeFactor = 0.00036m + 0.00036m;
+
+				decimal necessary = feeFactor * TotalBalance;
+
+				if(FeeBalance < necessary)
+				{
+					TelegramBot.Send("Малый остаток BNB монет");
+				}
+
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("NotifyUser: " + exception.Message);
+
+				return false;
+			}
+		}
+
+		private static void SetTradeParams()
+		{
+			try
+			{
+				Task.Run(() =>
+				{
+					SetIsolatedTrading();
+					
+					SetLeverage(DefaultLeverage);
+					
+					UpdateBalance();
+				});
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("SetTradeParams: " + exception.Message);
+			}
+		}
+
+		private static string Format(double value, int sign = 4)
+		{
+			try
+			{
+				sign = Math.Max(sign, 0);
+				sign = Math.Min(sign, 8);
+
+				return string.Format(CultureInfo.InvariantCulture, "{0:F" + sign + "}", value);
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("Format: " + exception.Message);
+
+				return "Invalid Format";
+			}
+		}
+
 		private static string Format(decimal value, int sign = 4)
 		{
 			try
@@ -1178,7 +1026,7 @@ namespace RoverBot
 			catch(Exception exception)
 			{
 				Logger.Write("Format: " + exception.Message);
-				
+
 				return "Invalid Format";
 			}
 		}
@@ -1192,7 +1040,7 @@ namespace RoverBot
 			catch(Exception exception)
 			{
 				Logger.Write("Point: " + exception.Message);
-				
+
 				return "Invalid Format";
 			}
 		}

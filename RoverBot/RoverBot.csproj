@@ -218,12 +218,10 @@
     <Compile Include="Helpers\TelegramBot.cs" />
     <Compile Include="Objects\SellOrder.cs" />
     <Compile Include="TradeBot.cs" />
-    <Compile Include="Helpers\WebSocketSpot.cs" />
+    <Compile Include="Helpers\WebSocketFutures.cs" />
     <Compile Include="Objects\BookTicker.cs" />
     <Compile Include="Objects\BookTickerStream.cs" />
     <Compile Include="Objects\Candle.cs" />
-    <Compile Include="Objects\CandleBrick.cs" />
-    <Compile Include="Objects\TradeParams.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

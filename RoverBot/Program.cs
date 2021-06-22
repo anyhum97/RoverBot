@@ -9,9 +9,7 @@ namespace RoverBot
 		{
 			try
 			{
-				TradeBot.Start();
-
-				while(TradeBot.IsValid())
+				while(BinanceFutures.IsValid())
 				{
 					Thread.Sleep(1000);
 				}

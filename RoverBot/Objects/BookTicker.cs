@@ -50,7 +50,7 @@ namespace RoverBot
 			}
 			catch(Exception exception)
 			{
-				Console.WriteLine("BinanceBookTicker.GetPrice: " + exception.Message);
+				Logger.Write("BinanceBookTicker.GetPrice: " + exception.Message);
 
 				return false;
 			}
