@@ -3,8 +3,10 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Security.Authentication;
 using System.Threading.Tasks;
+using System.Globalization;
 using System.Threading;
 using System.Text.Json;
+using System.IO;
 
 using WebSocketSharp;
 
@@ -13,7 +15,10 @@ using Binance.Net.Enums;
 
 using WebSocket = WebSocketSharp.WebSocket;
 
+using ErrorEventArgs = WebSocketSharp.ErrorEventArgs;
+
 using Timer = System.Timers.Timer;
+using System.Text;
 
 namespace RoverBot
 {
@@ -279,6 +284,19 @@ namespace RoverBot
 					{
 						Console.WriteLine("Skip");
 					}
+
+					StringBuilder stringBuilder = new StringBuilder();
+
+					stringBuilder.Append(DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss.fff"));
+					stringBuilder.Append("\t");
+
+					stringBuilder.Append(Format(deviation, 4));
+					stringBuilder.Append("\t");
+
+					stringBuilder.Append(Format(quota, 4));
+					stringBuilder.Append("\n");
+
+					File.AppendAllText("Records.txt", stringBuilder.ToString());
 				}
 				else
 				{
@@ -692,6 +710,23 @@ namespace RoverBot
 			catch(Exception exception)
 			{
 				Logger.Write("NotifyPropertyChanged: " + exception.Message);
+			}
+		}
+
+		private static string Format(decimal value, int sign = 4)
+		{
+			try
+			{
+				sign = Math.Max(sign, 0);
+				sign = Math.Min(sign, 8);
+
+				return string.Format(CultureInfo.InvariantCulture, "{0:F" + sign + "}", value);
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("Format: " + exception.Message);
+
+				return "Invalid Format";
 			}
 		}
 	}

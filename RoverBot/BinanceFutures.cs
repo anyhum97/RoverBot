@@ -26,7 +26,7 @@ namespace RoverBot
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.882";
+		public const string Version = "0.883";
 
 		public static string Symbol = Currency2 + Currency1;
 
