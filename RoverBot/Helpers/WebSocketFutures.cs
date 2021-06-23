@@ -28,8 +28,6 @@ namespace RoverBot
 		
 		public const decimal Percent = 1.0112m;
 
-		private static Timer InternalTimer = default;
-
 		#region CurrentPrice
 
 		private static object LockCurrentPrice = new object();
@@ -111,9 +109,9 @@ namespace RoverBot
 
 		public static DateTime HistoryUpdationTime;
 
-		public const int HistoryCount = 128;
+		public static DateTime LastKlineUpdated;
 
-		private static bool Ready = true;
+		public const int HistoryCount = 128;
 
 		#endregion
 
@@ -121,8 +119,6 @@ namespace RoverBot
 		{
 			try
 			{
-				StartInternalTimer();
-
 				HistoryUpdated += CheckEntryPoint;
 			}
 			catch(Exception exception)
@@ -158,28 +154,6 @@ namespace RoverBot
 				Logger.Write("StartPriceStream: " + exception.Message);
 
 				return false;
-			}
-		}
-
-		private static void OnPriceUpdated(object sender, MessageEventArgs e)
-		{
-			try
-			{
-				string str = e.Data;
-
-				BookTickerStream record = JsonSerializer.Deserialize<BookTickerStream>(str);
-				
-				if(record.Data.GetPrice(out decimal price))
-				{
-					if(price != CurrentPrice)
-					{
-						CurrentPrice = price;
-					}
-				}
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("OnPriceUpdated: " + exception.Message);
 			}
 		}
 
@@ -225,9 +199,9 @@ namespace RoverBot
 
 				client.OnMessage += OnKlineUpdated;
 
-				//client.OnError += OnPriceSocketError;
+				client.OnError += OnKlineSocketError;
 
-				//client.OnClose += OnPriceStreamClosed;
+				client.OnClose += OnKlineStreamClosed;
 
 				client.Connect();
 
@@ -241,6 +215,56 @@ namespace RoverBot
 			}
 		}
 
+		private static void OnKlineSocketError(object sender, ErrorEventArgs e)
+		{
+			try
+			{
+				Logger.Write("OnKlineSocketError: " + e.Message);
+
+				StartKlineStream();
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("OnKlineSocketError: " + exception.Message);
+			}
+		}
+
+		private static void OnKlineStreamClosed(object sender, CloseEventArgs e)
+		{
+			try
+			{
+				Logger.Write("OnKlineStreamClosed");
+
+				StartKlineStream();
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("OnKlineStreamClosed: " + exception.Message);
+			}
+		}
+
+		private static void OnPriceUpdated(object sender, MessageEventArgs e)
+		{
+			try
+			{
+				string str = e.Data;
+
+				BookTickerStream record = JsonSerializer.Deserialize<BookTickerStream>(str);
+				
+				if(record.Data.GetPrice(out decimal price))
+				{
+					if(price != CurrentPrice)
+					{
+						CurrentPrice = price;
+					}
+				}
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("OnPriceUpdated: " + exception.Message);
+			}
+		}
+		
 		private static void OnKlineUpdated(object sender, MessageEventArgs e)
 		{
 			try
@@ -251,54 +275,17 @@ namespace RoverBot
 
 				if(record.Data.GetTime(out DateTime time))
 				{
-					Console.WriteLine(time.ToString("mm:ss.ff"));
-				}
+					if(time != LastKlineUpdated)
+					{
+						LastKlineUpdated = time;
 
-				//File.WriteAllText("kline.txt", e.Data);
+						UpdateHistory();
+					}
+				}
 			}
 			catch(Exception exception)
 			{
 				Logger.Write("OnKlineUpdated: " + exception.Message);
-			}
-		}
-
-		private static void StartInternalTimer()
-		{
-			try
-			{
-				InternalTimer = new Timer();
-
-				InternalTimer.Interval = 1000;
-
-				InternalTimer.Elapsed += InternalTimerElapsed;
-
-				InternalTimer.Start();
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("StartInternalTimer: " + exception.Message);
-			}
-		}
-
-		private static void InternalTimerElapsed(object sender, System.Timers.ElapsedEventArgs e)
-		{
-			try
-			{
-				Task.Run(() =>
-				{
-					if(Ready)
-					{
-						Ready = false;
-
-						UpdateHistory();
-
-						Ready = true;
-					}
-				});
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("InternalTimerElapsed: " + exception.Message);
 			}
 		}
 
@@ -316,6 +303,8 @@ namespace RoverBot
 
 				state = state && GetQuota(History, 32, out quota);
 
+				Candle.WriteList(DateTime.Now.ToString("HH-mm") + ".txt", History);
+
 				if(state)
 				{
 					if(deviation >= 1.80m)
@@ -324,7 +313,7 @@ namespace RoverBot
 						{
 							decimal takeProfit = Percent * History.Last().Close;
 
-							BinanceFutures.OnEntryPointDetected(takeProfit);
+							//BinanceFutures.OnEntryPointDetected(takeProfit);
 						}
 						else
 						{
