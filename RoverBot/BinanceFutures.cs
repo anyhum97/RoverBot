@@ -26,7 +26,7 @@ namespace RoverBot
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.774";
+		public const string Version = "0.882";
 
 		public static string Symbol = Currency2 + Currency1;
 
@@ -105,8 +105,6 @@ namespace RoverBot
 				StartInternalTimer1();
 
 				StartInternalTimer2();
-
-				
 			}
 			catch(Exception exception)
 			{
@@ -210,7 +208,7 @@ namespace RoverBot
 			}
 		}
 
-		public static void OnEntryPointDetected()
+		public static void OnEntryPointDetected(decimal takeProfit)
 		{
 			try
 			{
@@ -224,9 +222,7 @@ namespace RoverBot
 							{
 								decimal price = WebSocketFutures.CurrentPrice;
 
-								decimal takeProfit = Math.Round(1.011m * price, 2);
-
-								const decimal depositFactor = 1.0m;
+								const decimal depositFactor = 0.98m;
 
 								decimal deposit = depositFactor * Balance;
 
@@ -234,7 +230,7 @@ namespace RoverBot
 
 								decimal volume = deals * VolumeFilter;
 
-								PlaceLongOrder(Symbol, VolumeFilter, takeProfit);
+								PlaceLongOrder(Symbol, volume, takeProfit);
 
 								CheckPosition(Symbol);
 
@@ -297,25 +293,25 @@ namespace RoverBot
 							return false;
 						}
 
-						var orders = new BinanceFuturesBatchOrder[1];
+						var orders = new BinanceFuturesBatchOrder[2];
 						
-						//orders[0] = new BinanceFuturesBatchOrder()
-						//{
-						//	Symbol = symbol,
-						//	Side = OrderSide.Buy,
-						//	Type = OrderType.Market,
-						//	PositionSide = PositionSide.Both,
-						//	Quantity = volume,
-						//	ReduceOnly = false,
-						//};
-
 						orders[0] = new BinanceFuturesBatchOrder()
 						{
 							Symbol = symbol,
-							Side = OrderSide.Sell,
-							Type = OrderType.TakeProfit,
+							Side = OrderSide.Buy,
+							Type = OrderType.Market,
 							PositionSide = PositionSide.Both,
+							Quantity = volume,
+							ReduceOnly = false,
+						};
+
+						orders[1] = new BinanceFuturesBatchOrder()
+						{
+							Symbol = symbol,
+							Side = OrderSide.Sell,
+							Type = OrderType.TakeProfitMarket,
 							TimeInForce = TimeInForce.GoodTillCancel,
+							PositionSide = PositionSide.Both,
 							ActivationPrice = takeProfit,
 							StopPrice = takeProfit,
 							Quantity = volume,

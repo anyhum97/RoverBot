@@ -23,6 +23,8 @@ namespace RoverBot
 
 		private static Timer InternalTimer = default;
 
+		public const decimal Percent = 1.0112m;
+
 		#region CurrentPrice
 
 		private static object LockCurrentPrice = new object();
@@ -264,7 +266,9 @@ namespace RoverBot
 					{
 						if(quota >= 0.996m)
 						{
-							BinanceFutures.OnEntryPointDetected();
+							decimal takeProfit = Percent * History.Last().Close;
+
+							BinanceFutures.OnEntryPointDetected(takeProfit);
 						}
 						else
 						{

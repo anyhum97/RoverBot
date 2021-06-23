@@ -9,12 +9,6 @@ namespace RoverBot
 		{
 			try
 			{
-                BinanceFutures.IsValid();
-
-				Thread.Sleep(8000);
-
-				BinanceFutures.OnEntryPointDetected();
-
 				while(BinanceFutures.IsValid())
 				{
 					Thread.Sleep(1000);
