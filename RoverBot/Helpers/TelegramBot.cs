@@ -183,7 +183,7 @@ namespace RoverBot
 					stringBuilder.Append(Format(BinanceFutures.TotalBalance+BinanceFutures.FeeBalance, 2));
 					stringBuilder.Append(" " + BinanceFutures.Currency1);
 					
-					Send(stringBuilder.ToString());
+					Send(chatId, stringBuilder.ToString());
 
 					return;
 				}

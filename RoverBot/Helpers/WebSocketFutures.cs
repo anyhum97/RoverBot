@@ -20,10 +20,10 @@ namespace RoverBot
 	public static class WebSocketFutures
 	{
 		private const string Symbol = "BTCUSDT";
+		
+		public const decimal Percent = 1.0112m;
 
 		private static Timer InternalTimer = default;
-
-		public const decimal Percent = 1.0112m;
 
 		#region CurrentPrice
 
