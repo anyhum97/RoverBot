@@ -265,6 +265,8 @@ namespace RoverBot
 
 				state = state && GetQuota(History, 32, out quota);
 
+				//Candle.WriteList(History.Last().CloseTime.ToString("HH-mm") + ".txt", History);
+
 				if(state)
 				{
 					if(deviation >= 1.80m)
@@ -273,7 +275,7 @@ namespace RoverBot
 						{
 							decimal takeProfit = Percent * History.Last().Close;
 
-							BinanceFutures.OnEntryPointDetected(takeProfit);
+							//BinanceFutures.OnEntryPointDetected(takeProfit);
 						}
 						else
 						{

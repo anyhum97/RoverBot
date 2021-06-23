@@ -334,7 +334,7 @@ namespace RoverBot
 							
 							Logger.Write("PlaceLongOrder: Success (Price = " + Format(price, PricePrecision) + ")");
 
-							TelegramBot.Send("Long Order");
+							TelegramBot.Send("Сделка");
 
 							return true;
 						}
