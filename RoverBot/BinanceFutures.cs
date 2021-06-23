@@ -84,6 +84,8 @@ namespace RoverBot
 				
 				WebSocketFutures.StartPriceStream();
 				
+				WebSocketFutures.StartKlineStream();
+
 				TelegramBot.Start();
 				
 				while(IsTrading == false)
@@ -334,7 +336,7 @@ namespace RoverBot
 							
 							Logger.Write("PlaceLongOrder: Success (Price = " + Format(price, PricePrecision) + ")");
 
-							TelegramBot.Send("Long Order");
+							TelegramBot.Send("Сделка");
 
 							return true;
 						}

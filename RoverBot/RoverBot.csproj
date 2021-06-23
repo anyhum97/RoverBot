@@ -206,6 +206,9 @@
     <Compile Include="Objects\BookTicker.cs" />
     <Compile Include="Objects\BookTickerStream.cs" />
     <Compile Include="Objects\Candle.cs" />
+    <Compile Include="Objects\Kline.cs" />
+    <Compile Include="Objects\KlineTicker.cs" />
+    <Compile Include="Objects\KlineTickerStream.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

@@ -211,6 +211,57 @@ namespace RoverBot
 			}
 		}
 
+		public static bool StartKlineStream()
+		{
+			try
+			{
+				string symbol = Symbol.ToLower();
+
+				string url = "wss://fstream.binance.com/stream?streams=" + symbol + "@kline_1m";
+
+				WebSocket client = new WebSocket(url);
+
+				client.SslConfiguration.EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls11 | SslProtocols.Tls;
+
+				client.OnMessage += OnKlineUpdated;
+
+				//client.OnError += OnPriceSocketError;
+
+				//client.OnClose += OnPriceStreamClosed;
+
+				client.Connect();
+
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("StartKlineStream: " + exception.Message);
+
+				return false;
+			}
+		}
+
+		private static void OnKlineUpdated(object sender, MessageEventArgs e)
+		{
+			try
+			{
+				string str = e.Data;
+
+				KlineTickerStream record = JsonSerializer.Deserialize<KlineTickerStream>(str);
+
+				if(record.Data.GetTime(out DateTime time))
+				{
+					Console.WriteLine(time.ToString("mm:ss.ff"));
+				}
+
+				//File.WriteAllText("kline.txt", e.Data);
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("OnKlineUpdated: " + exception.Message);
+			}
+		}
+
 		private static void StartInternalTimer()
 		{
 			try
