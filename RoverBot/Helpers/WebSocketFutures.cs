@@ -303,7 +303,7 @@ namespace RoverBot
 
 				state = state && GetQuota(History, 32, out quota);
 
-				Candle.WriteList(DateTime.Now.ToString("HH-mm") + ".txt", History);
+				Candle.WriteList(History.Last().CloseTime.ToString("HH-mm") + ".txt", History);
 
 				if(state)
 				{
