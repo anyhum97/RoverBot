@@ -26,7 +26,7 @@ namespace RoverBot
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.883";
+		public const string Version = "0.884";
 
 		public static string Symbol = Currency2 + Currency1;
 
@@ -784,23 +784,6 @@ namespace RoverBot
 			}
 		}
 
-		private static string Format(double value, int sign = 4)
-		{
-			try
-			{
-				sign = Math.Max(sign, 0);
-				sign = Math.Min(sign, 8);
-
-				return string.Format(CultureInfo.InvariantCulture, "{0:F" + sign + "}", value);
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("Format: " + exception.Message);
-
-				return "Invalid Format";
-			}
-		}
-
 		private static string Format(decimal value, int sign = 4)
 		{
 			try
@@ -813,20 +796,6 @@ namespace RoverBot
 			catch(Exception exception)
 			{
 				Logger.Write("Format: " + exception.Message);
-
-				return "Invalid Format";
-			}
-		}
-
-		private static string Point(decimal value)
-		{
-			try
-			{
-				return string.Format(CultureInfo.InvariantCulture, "{0}", value);
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("Point: " + exception.Message);
 
 				return "Invalid Format";
 			}

@@ -2,9 +2,7 @@
 using System.Linq;
 using System.Collections.Generic;
 using System.Security.Authentication;
-using System.Threading.Tasks;
 using System.Globalization;
-using System.Threading;
 using System.Text.Json;
 using System.Text;
 using System.IO;
@@ -303,10 +301,6 @@ namespace RoverBot
 				state = state && GetDeviationFactor(History, 120, out deviation);
 
 				state = state && GetQuota(History, 32, out quota);
-
-				Console.WriteLine(History.Last().CloseTime.ToString("HH:mm"));
-
-				Candle.WriteList(History.Last().CloseTime.ToString("HH-mm") + ".txt", History);
 				
 				if(state)
 				{
@@ -316,7 +310,7 @@ namespace RoverBot
 						{
 							decimal takeProfit = Percent * History.Last().Close;
 							
-							//BinanceFutures.OnEntryPointDetected(takeProfit);
+							BinanceFutures.OnEntryPointDetected(takeProfit);
 						}
 						else
 						{
@@ -327,19 +321,8 @@ namespace RoverBot
 					{
 						Console.WriteLine("Skip");
 					}
-					
-					StringBuilder stringBuilder = new StringBuilder();
-					
-					stringBuilder.Append(DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss.fff"));
-					stringBuilder.Append("\t");
-					
-					stringBuilder.Append(Format(deviation, 4));
-					stringBuilder.Append("\t");
-					
-					stringBuilder.Append(Format(quota, 4));
-					stringBuilder.Append("\n");
-					
-					File.AppendAllText("Records.txt", stringBuilder.ToString());
+
+					WriteRecord(deviation, quota);
 				}
 				else
 				{
@@ -349,6 +332,29 @@ namespace RoverBot
 			catch(Exception exception)
 			{
 				Logger.Write("CheckEntryPoint: " + exception.Message);
+			}
+		}
+
+		private static void WriteRecord(decimal deviation, decimal quota)
+		{
+			try
+			{
+				StringBuilder stringBuilder = new StringBuilder();
+				
+				stringBuilder.Append(History.Last().CloseTime.ToString("dd.MM.yyyy HH:mm"));
+				stringBuilder.Append("\t");
+				
+				stringBuilder.Append(Format(deviation, 4));
+				stringBuilder.Append("\t");
+				
+				stringBuilder.Append(Format(quota, 4));
+				stringBuilder.Append("\n");
+				
+				File.AppendAllText("Records.txt", stringBuilder.ToString());
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("WriteRecord: " + exception.Message);
 			}
 		}
 
