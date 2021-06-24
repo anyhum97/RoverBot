@@ -65,6 +65,8 @@ namespace RoverBot
 
 		public static DateTime PriceUpdationTime;
 
+		public static DateTime PriceServerTime;
+
 		#endregion
 
 		#region History
@@ -189,7 +191,12 @@ namespace RoverBot
 				
 				if(record.Data.GetPrice(out decimal price))
 				{
-					CurrentPrice = price;
+					if(record.Data.GetTime(out DateTime time))
+					{
+						CurrentPrice = price;
+
+						PriceServerTime = time;
+					}
 				}
 			}
 			catch(Exception exception)
@@ -297,7 +304,7 @@ namespace RoverBot
 
 				state = state && GetQuota(History, 32, out quota);
 
-				//Console.WriteLine(History.Last().CloseTime.ToString("HH:mm"));
+				Console.WriteLine(History.Last().CloseTime.ToString("HH:mm"));
 
 				Candle.WriteList(History.Last().CloseTime.ToString("HH-mm") + ".txt", History);
 				
@@ -480,49 +487,6 @@ namespace RoverBot
 			}
 		}
 
-		public static bool CheckHistory()
-		{
-			try
-			{
-				if(History == null)
-				{
-					return false;
-				}
-
-				return true; /////////////////////////////////////
-
-				if(History.Count < HistoryCount)
-				{
-					return false;
-				}
-
-				for(int i=default; i<HistoryCount-1; ++i)
-				{
-					if(History[i+1].CloseTime > History[i].CloseTime.AddSeconds(120.0))
-					{
-						Logger.Write("CheckHistory: Wrong Sequence");
-
-						return false;
-					}
-				}
-
-				const double PriceExpiration = 10.0;
-
-				if(PriceUpdationTime.AddSeconds(PriceExpiration) < DateTime.Now)
-				{
-					return false;
-				}
-
-				return true;
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("CheckHistory: " + exception.Message);
-
-				return false;
-			}
-		}
-
 		private static bool LoadHistory(string symbol, int count, out List<Candle> history)
 		{
 			history = new List<Candle>();
@@ -531,7 +495,7 @@ namespace RoverBot
 			{
 				BinanceClient client = new BinanceClient();
 
-				var responce = client.FuturesUsdt.Market.GetKlines(symbol, KlineInterval.OneMinute, limit:count);
+				var responce = client.FuturesUsdt.Market.GetKlines(symbol, KlineInterval.OneMinute, limit: count);
 				
 				if(responce.Success)
 				{
@@ -555,6 +519,53 @@ namespace RoverBot
 			catch(Exception exception)
 			{
 				Logger.Write("LoadHistory: " + exception.Message);
+
+				return false;
+			}
+		}
+
+		private static bool CheckHistory()
+		{
+			try
+			{
+				if(History == null)
+				{
+					return false;
+				}
+
+				const int SizeBorder = 122;
+
+				if(History.Count < SizeBorder)
+				{
+					Logger.Write("CheckHistory: Invalid Sequence");
+
+					return false;
+				}
+
+				const double HistoryExpiration = 60.0;
+
+				for(int i=default; i<History.Count-1; ++i)
+				{
+					if(History[i+1].CloseTime > History[i].CloseTime.AddSeconds(HistoryExpiration).AddMilliseconds(1.0))
+					{
+						Logger.Write("CheckHistory: Wrong Sequence");
+
+						return false;
+					}
+				}
+
+				const double PriceExpiration = 4.0;
+
+				if(PriceServerTime > History.Last().CloseTime.AddSeconds(PriceExpiration))
+				{
+					return false;
+				}
+
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("CheckHistory: " + exception.Message);
 
 				return false;
 			}

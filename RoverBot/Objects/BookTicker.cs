@@ -33,6 +33,8 @@ namespace RoverBot
 		[JsonPropertyName("E")]
 		public long EventTime { get; set; }
 
+		private static readonly DateTime Epoch = new DateTime(1970, 1, 1);
+
 		public bool GetPrice(out decimal price)
 		{
 			price = default;
@@ -51,6 +53,40 @@ namespace RoverBot
 			catch(Exception exception)
 			{
 				Logger.Write("BinanceBookTicker.GetPrice: " + exception.Message);
+
+				return false;
+			}
+		}
+
+		public bool GetTime(out DateTime time)
+		{
+			time = default;
+
+			try
+			{
+				return DateTimeFromTimeStamp(EventTime, out time);
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("BinanceBookTicker.GetTime: " + exception.Message);
+
+				return false;
+			}
+		}
+
+		private static bool DateTimeFromTimeStamp(long timestamp, out DateTime time)
+		{
+			time = default;
+
+			try
+			{
+				time = Epoch.AddMilliseconds(timestamp).ToLocalTime();
+
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("DateTimeFromTimeStamp: " + exception.Message);
 
 				return false;
 			}
