@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Globalization;
 using System.Threading;
 using System.Text.Json;
+using System.Text;
 using System.IO;
 
 using WebSocketSharp;
@@ -16,9 +17,6 @@ using Binance.Net.Enums;
 using WebSocket = WebSocketSharp.WebSocket;
 
 using ErrorEventArgs = WebSocketSharp.ErrorEventArgs;
-
-using Timer = System.Timers.Timer;
-using System.Text;
 
 namespace RoverBot
 {
@@ -99,10 +97,6 @@ namespace RoverBot
 					HistoryUpdationTime = DateTime.Now;
 
 					NotifyPropertyChanged(HistoryUpdated);
-				}
-				else
-				{
-					ResetHistory();
 				}
 			}
 		}
@@ -185,6 +179,25 @@ namespace RoverBot
 			}
 		}
 
+		private static void OnPriceUpdated(object sender, MessageEventArgs e)
+		{
+			try
+			{
+				string str = e.Data;
+
+				BookTickerStream record = JsonSerializer.Deserialize<BookTickerStream>(str);
+				
+				if(record.Data.GetPrice(out decimal price))
+				{
+					CurrentPrice = price;
+				}
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("OnPriceUpdated: " + exception.Message);
+			}
+		}
+		
 		public static bool StartKlineStream()
 		{
 			try
@@ -243,28 +256,6 @@ namespace RoverBot
 			}
 		}
 
-		private static void OnPriceUpdated(object sender, MessageEventArgs e)
-		{
-			try
-			{
-				string str = e.Data;
-
-				BookTickerStream record = JsonSerializer.Deserialize<BookTickerStream>(str);
-				
-				if(record.Data.GetPrice(out decimal price))
-				{
-					if(price != CurrentPrice)
-					{
-						CurrentPrice = price;
-					}
-				}
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("OnPriceUpdated: " + exception.Message);
-			}
-		}
-		
 		private static void OnKlineUpdated(object sender, MessageEventArgs e)
 		{
 			try
@@ -279,7 +270,10 @@ namespace RoverBot
 					{
 						LastKlineUpdated = time;
 
-						UpdateHistory();
+						if(LoadHistory(Symbol, HistoryCount, out var history))
+						{
+							History = history;
+						}
 					}
 				}
 			}
@@ -303,8 +297,10 @@ namespace RoverBot
 
 				state = state && GetQuota(History, 32, out quota);
 
-				Candle.WriteList(History.Last().CloseTime.ToString("HH-mm") + ".txt", History);
+				//Console.WriteLine(History.Last().CloseTime.ToString("HH:mm"));
 
+				Candle.WriteList(History.Last().CloseTime.ToString("HH-mm") + ".txt", History);
+				
 				if(state)
 				{
 					if(deviation >= 1.80m)
@@ -312,7 +308,7 @@ namespace RoverBot
 						if(quota >= 0.996m)
 						{
 							decimal takeProfit = Percent * History.Last().Close;
-
+							
 							//BinanceFutures.OnEntryPointDetected(takeProfit);
 						}
 						else
@@ -324,18 +320,18 @@ namespace RoverBot
 					{
 						Console.WriteLine("Skip");
 					}
-
+					
 					StringBuilder stringBuilder = new StringBuilder();
-
+					
 					stringBuilder.Append(DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss.fff"));
 					stringBuilder.Append("\t");
-
+					
 					stringBuilder.Append(Format(deviation, 4));
 					stringBuilder.Append("\t");
-
+					
 					stringBuilder.Append(Format(quota, 4));
 					stringBuilder.Append("\n");
-
+					
 					File.AppendAllText("Records.txt", stringBuilder.ToString());
 				}
 				else
@@ -484,74 +480,6 @@ namespace RoverBot
 			}
 		}
 
-		private static void UpdateHistory()
-		{
-			try
-			{
-				if(History == null)
-				{
-					ResetHistory();
-
-					return;
-				}
-				
-				int count = History.Count;
-
-				if(count != HistoryCount)
-				{
-					ResetHistory();
-
-					return;
-				}
-
-				DateTime startTime = History.First().CloseTime;
-				
-				DateTime stopTime = History.Last().CloseTime;
-				
-				DateTime currentTime = DateTime.Now;
-				
-				TimeSpan timeSpan = currentTime - stopTime;
-				
-				if(stopTime.AddMinutes(HistoryCount) <= currentTime)
-				{
-					ResetHistory();
-				
-					return;
-				}
-				
-				int remind = (int)timeSpan.TotalMinutes;
-				
-				if(remind > 0)
-				{
-					List<Candle> list = new List<Candle>();
-
-					if(LoadHistory(Symbol, remind, out var history))
-					{
-						if(history.Last().CloseTime > History.Last().CloseTime)
-						{
-							list = list.Concat(History).ToList();
-
-							list = list.Concat(history).ToList();
-
-							list.Reverse();
-
-							list = list.Take(HistoryCount).ToList();
-
-							list.Reverse();
-
-							History = list;
-						}
-					}
-				}
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("UpdateHistory: " + exception.Message);
-
-				ResetHistory();
-			}
-		}
-
 		public static bool CheckHistory()
 		{
 			try
@@ -561,7 +489,9 @@ namespace RoverBot
 					return false;
 				}
 
-				if(History.Count != HistoryCount)
+				return true; /////////////////////////////////////
+
+				if(History.Count < HistoryCount)
 				{
 					return false;
 				}
@@ -576,7 +506,7 @@ namespace RoverBot
 					}
 				}
 
-				const int PriceExpiration = 10;
+				const double PriceExpiration = 10.0;
 
 				if(PriceUpdationTime.AddSeconds(PriceExpiration) < DateTime.Now)
 				{
@@ -593,46 +523,7 @@ namespace RoverBot
 			}
 		}
 
-		private static void ResetHistory()
-		{
-			try
-			{
-				if(LoadHistory(Symbol, HistoryCount, out var history) == false)
-				{
-					return;
-				}
-
-				History = history;
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("ResetHistory: " + exception.Message);
-			}
-		}
-
 		private static bool LoadHistory(string symbol, int count, out List<Candle> history)
-		{
-			history = default;
-
-			try
-			{
-				DateTime stopTime = DateTime.Now.AddMinutes(-1).ToUniversalTime();
-
-				DateTime startTime = stopTime.AddMinutes(-count);
-				
-				bool result = LoadHistory(symbol, startTime, stopTime, out history);
-
-				return result;
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("LoadHistory: " + exception.Message);
-
-				return false;
-			}
-		}
-
-		private static bool LoadHistory(string symbol, DateTime startTime, DateTime stopTime, out List<Candle> history)
 		{
 			history = new List<Candle>();
 
@@ -640,95 +531,26 @@ namespace RoverBot
 			{
 				BinanceClient client = new BinanceClient();
 
-				TimeSpan timeSpan = stopTime - startTime;
-
-				int count = (int)Math.Floor(timeSpan.TotalMinutes);
-
-				const int pageSize = 1000;
-
-				const int attempts = 3;
-
-				int pages = count / pageSize;
-
-				int remainder = count - pages*pageSize;
-
-				for(int i=0; i<pages; ++i)
+				var responce = client.FuturesUsdt.Market.GetKlines(symbol, KlineInterval.OneMinute, limit:count);
+				
+				if(responce.Success)
 				{
-					bool flag = false;
-
-					for(int j=0; j<attempts; ++j)
+					foreach(var record in responce.Data)
 					{
-						var responce = client.FuturesUsdt.Market.GetKlines(symbol, KlineInterval.OneMinute, startTime, limit:pageSize);
-						
-						if(responce.Success)
+						if(record.CloseTime.ToLocalTime() < LastKlineUpdated)
 						{
-							startTime = startTime.AddMinutes(pageSize);
-							
-							foreach(var record in responce.Data)
-							{
-								if(record.CloseTime.ToLocalTime() < DateTime.Now)
-								{
-									history.Add(new Candle(record.CloseTime.ToLocalTime(), record.Open, record.Close, record.Low, record.High));
-								}
-							}
-
-							flag = true;
-
-							break;
-						}
-						else
-						{
-							Logger.Write("LoadHistory: " + responce.Error.Message);
-
-							Thread.Sleep(1000);
+							history.Add(new Candle(record.CloseTime.ToLocalTime(), record.Open, record.Close, record.Low, record.High));
 						}
 					}
-
-					if(flag == false)
-					{
-						return false;
-					}
+					
+					return true;
 				}
-
-				if(remainder > 0)
+				else
 				{
-					bool flag = false;
+					Logger.Write("LoadHistory: " + responce.Error.Message);
 
-					for(int j=0; j<attempts; ++j)
-					{
-						var responce = client.FuturesUsdt.Market.GetKlines(symbol, KlineInterval.OneMinute, startTime, limit:pageSize);
-						
-						if(responce.Success)
-						{
-							startTime = startTime.AddMinutes(pageSize);
-							
-							foreach(var record in responce.Data)
-							{
-								if(record.CloseTime.ToLocalTime() < DateTime.Now)
-								{
-									history.Add(new Candle(record.CloseTime.ToLocalTime(), record.Open, record.Close, record.Low, record.High));
-								}
-							}
-
-							flag = true;
-
-							break;
-						}
-						else
-						{
-							Logger.Write("LoadHistory: " + responce.Error.Message);
-
-							Thread.Sleep(1000);
-						}
-					}
-
-					if(flag == false)
-					{
-						return false;
-					}
+					return false;
 				}
-
-				return true;
 			}
 			catch(Exception exception)
 			{
