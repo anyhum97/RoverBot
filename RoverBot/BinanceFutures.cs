@@ -18,15 +18,15 @@ namespace RoverBot
 	{
 		public const string CheckLine = "******************************************************************************";
 
-		public const string ApiKey = "LF6LgLNhFZcMPRkasacEsmc7fQJ4qRydCVakhf99V76IIH4cMER1QNTSLHa2aPqt";
+		public const string ApiKey = "znnURJsV8h8EKDGfFw6kqoT5cJFsl21hCHzdkXJDWcBBT3hpdn1UHwJbTiGOw7Sc";
 
-		public const string SecretKey = "7OMVQjWx7IVqmQ33Uuc01o4X8DNMUdUO22EwkGj0q70KVjjr2xV45WivqaTYohDq";
+		public const string SecretKey = "wQOJwAul4Cse8oKqCCCKBpJS23b2Kjdq104PNIHDZ8ogdmN550EjnjDJbuHbiG3l";
 
 		public const string Currency1 = "USDT";
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.885";
+		public const string Version = "0.885(a)";
 
 		public static string Symbol = Currency2 + Currency1;
 
@@ -85,8 +85,6 @@ namespace RoverBot
 				WebSocketFutures.StartPriceStream();
 				
 				WebSocketFutures.StartKlineStream();
-
-				TelegramBot.Start();
 				
 				while(IsTrading == false)
 				{
@@ -240,8 +238,6 @@ namespace RoverBot
 							}
 							else
 							{
-								TelegramBot.Send("Установлено неверное плечо (" + CurrentLeverage + ")");
-
 								Logger.Write("Invalid Leverage");
 							}
 						}
@@ -335,8 +331,6 @@ namespace RoverBot
 							}
 							
 							Logger.Write("PlaceLongOrder: Success (Price = " + Format(price, PricePrecision) + ")");
-
-							TelegramBot.Send("Сделка");
 
 							return true;
 						}
@@ -462,14 +456,12 @@ namespace RoverBot
 							{
 								FeeCoins = list[i].Balance;
 
-								if(FeePrice > 0.0m)
-								{
-									FeeBalance = FeePrice * FeeCoins;
-								}
-								else
+								if(FeePrice == default)
 								{
 									UpdateFeePrice();
 								}
+
+								FeeBalance = FeePrice * FeeCoins;
 							}
 						}
 
@@ -700,8 +692,6 @@ namespace RoverBot
 							UpdateFeePrice();
 
 							UpdateBalance();
-
-							NotifyUser();
 						}
 						
 						IsTrading = CancelAllOrders(Symbol);
@@ -727,39 +717,6 @@ namespace RoverBot
 			catch(Exception exception)
 			{
 				Logger.Write("CheckPosition: " + exception.Message);
-
-				return false;
-			}
-		}
-		
-		private static bool NotifyUser()
-		{
-			try
-			{
-				if(TotalBalance > LastBalance)
-				{
-					TelegramBot.Send("Сделка прошла успешно");
-				}
-
-				if(TotalBalance < LastBalance)
-				{
-					TelegramBot.Send("Сделка провалена");
-				}
-
-				const decimal feeFactor = 0.00036m + 0.00036m;
-
-				decimal necessary = feeFactor * TotalBalance;
-
-				if(FeeBalance < necessary)
-				{
-					TelegramBot.Send("Малый остаток BNB монет");
-				}
-
-				return true;
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("NotifyUser: " + exception.Message);
 
 				return false;
 			}

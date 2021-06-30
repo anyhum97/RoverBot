@@ -200,7 +200,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Helpers\Logger.cs" />
-    <Compile Include="Helpers\TelegramBot.cs" />
     <Compile Include="BinanceFutures.cs" />
     <Compile Include="Helpers\WebSocketFutures.cs" />
     <Compile Include="Objects\BookTicker.cs" />
