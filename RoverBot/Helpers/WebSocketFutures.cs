@@ -3,6 +3,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Security.Authentication;
 using System.Globalization;
+using System.Threading;
 using System.Text.Json;
 using System.Text;
 using System.IO;
@@ -274,6 +275,8 @@ namespace RoverBot
 					if(time != LastKlineUpdated)
 					{
 						LastKlineUpdated = time;
+
+						Thread.Sleep(4000);
 
 						if(LoadHistory(Symbol, HistoryCount, out var history))
 						{
@@ -560,7 +563,7 @@ namespace RoverBot
 					}
 				}
 
-				const double PriceExpiration = 4.0;
+				const double PriceExpiration = 10.0;
 
 				if(PriceServerTime > History.Last().CloseTime.AddSeconds(PriceExpiration))
 				{
