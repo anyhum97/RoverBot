@@ -26,7 +26,7 @@ namespace RoverBot
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.885(a)";
+		public const string Version = "0.886(a)";
 
 		public static string Symbol = Currency2 + Currency1;
 
@@ -34,7 +34,7 @@ namespace RoverBot
 
 		public const decimal VolumeFilter = 0.001m;
 
-		public const int DefaultLeverage = 10;
+		public const int DefaultLeverage = 6;
 
 		public const int PricePrecision = 2;
 
