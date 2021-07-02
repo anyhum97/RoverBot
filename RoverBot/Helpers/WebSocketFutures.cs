@@ -23,7 +23,7 @@ namespace RoverBot
 	{
 		private const string Symbol = "BTCUSDT";
 		
-		public const decimal Percent = 1.0112m;
+		public const decimal Percent = 1.013m;
 
 		#region CurrentPrice
 
@@ -106,7 +106,7 @@ namespace RoverBot
 
 		public static DateTime LastKlineUpdated;
 
-		public const int HistoryCount = 128;
+		public const int HistoryCount = 180;
 
 		#endregion
 
@@ -301,13 +301,13 @@ namespace RoverBot
 
 				decimal quota = default;
 
-				state = state && GetDeviationFactor(History, 120, out deviation);
+				state = state && GetDeviationFactor(History, 140, out deviation);
 
-				state = state && GetQuota(History, 32, out quota);
+				state = state && GetQuota(History, 28, out quota);
 				
 				if(state)
 				{
-					if(deviation >= 1.80m)
+					if(deviation >= 1.892m)
 					{
 						if(quota >= 0.996m)
 						{
@@ -542,7 +542,7 @@ namespace RoverBot
 					return false;
 				}
 
-				const int SizeBorder = 122;
+				const int SizeBorder = 160;
 
 				if(History.Count < SizeBorder)
 				{
