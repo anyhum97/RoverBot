@@ -26,7 +26,7 @@ namespace RoverBot
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.886(a)";
+		public const string Version = "0.8862(a)";
 
 		public static string Symbol = Currency2 + Currency1;
 
@@ -307,11 +307,12 @@ namespace RoverBot
 						{
 							Symbol = symbol,
 							Side = OrderSide.Sell,
-							Type = OrderType.TakeProfitMarket,
-							TimeInForce = TimeInForce.GoodTillCancel,
+							Type = OrderType.TakeProfit,
 							PositionSide = PositionSide.Both,
+							TimeInForce = TimeInForce.GoodTillCancel,
 							ActivationPrice = takeProfit,
 							StopPrice = takeProfit,
+							Price = takeProfit,
 							Quantity = volume,
 							ReduceOnly = true,
 						};
