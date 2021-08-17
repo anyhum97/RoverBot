@@ -307,9 +307,9 @@ namespace RoverBot
 				
 				if(state)
 				{
-					if(deviation >= 1.892m)
+					if(deviation >= 1.1m)
 					{
-						if(quota >= 0.996m)
+						if(quota >= 0.988m)
 						{
 							decimal takeProfit = Percent * History.Last().Close;
 							
@@ -367,7 +367,7 @@ namespace RoverBot
 
 			try
 			{
-				int index = history.Count-3;
+				int index = history.Count-4;
 
 				for(int i=index-window+1; i<index; ++i)
 				{
@@ -396,7 +396,7 @@ namespace RoverBot
 
 			try
 			{
-				int index = history.Count-3;
+				int index = history.Count-4;
 
 				if(GetAverage(history, window, out average) == false)
 				{
@@ -430,7 +430,7 @@ namespace RoverBot
 
 			try
 			{
-				int index = history.Count-3;
+				int index = history.Count-4;
 
 				if(GetDeviation(history, window, out decimal average, out decimal deviation) == false)
 				{

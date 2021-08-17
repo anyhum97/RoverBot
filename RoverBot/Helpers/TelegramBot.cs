@@ -13,7 +13,7 @@ namespace RoverBot
 {
 	public static class TelegramBot
 	{
-		private const string Token = "1847090410:AAFOT1G0KlNUyh-DesCbVrlSythn-UVHx4k";
+		private const string Token = "1970395292:AAHUasqefvgSNm0pH7BlFnIeBkGPyK0tCis";
 
 		private static readonly TelegramBotClient Client = default;
 
@@ -29,9 +29,7 @@ namespace RoverBot
 
 				ChatList = new List<long>();
 
-				ChatList.Add(614503016);
-
-				ChatList.Add(768427512);
+				ChatList.Add(356884766);
 			}
 			catch(Exception exception)
 			{
@@ -143,24 +141,6 @@ namespace RoverBot
 			try
 			{
 				str = str.ToLower();
-
-				if(str == "start")
-				{
-					BinanceFutures.IsTrading = true;
-
-					Send("Торговля включена");
-					
-					return;
-				}
-				
-				if(str == "stop")
-				{
-					BinanceFutures.IsTrading = false;
-
-					Send("Торговля отключена");
-					
-					return;
-				}
 
 				if(str.Contains("balance") || str == "b")
 				{

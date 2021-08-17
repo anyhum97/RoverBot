@@ -18,9 +18,9 @@ namespace RoverBot
 	{
 		public const string CheckLine = "******************************************************************************";
 
-		public const string ApiKey = "LF6LgLNhFZcMPRkasacEsmc7fQJ4qRydCVakhf99V76IIH4cMER1QNTSLHa2aPqt";
+		public const string ApiKey = "XLeB7VXbY2oIhJYPVvhvzVowgDyyqC0oZLsMOPg60CfnZYrVmvCLYFPCmy5VoUXv";
 
-		public const string SecretKey = "7OMVQjWx7IVqmQ33Uuc01o4X8DNMUdUO22EwkGj0q70KVjjr2xV45WivqaTYohDq";
+		public const string SecretKey = "W6qKFWVLjHtgkrc5gno5AklrtH2hS8zgMKGUoZMGniGHzkGn6DZXA6gLNk0AABLR";
 
 		public const string Currency1 = "USDT";
 
@@ -34,7 +34,7 @@ namespace RoverBot
 
 		public const decimal VolumeFilter = 0.001m;
 
-		public const int DefaultLeverage = 6;
+		public const int DefaultLeverage = 2;
 
 		public const int PricePrecision = 2;
 
