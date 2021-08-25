@@ -18,9 +18,9 @@ namespace RoverBot
 	{
 		public const string CheckLine = "******************************************************************************";
 
-		public const string ApiKey = "znnURJsV8h8EKDGfFw6kqoT5cJFsl21hCHzdkXJDWcBBT3hpdn1UHwJbTiGOw7Sc";
+		public const string ApiKey = "2SZQJS9YCll34RsYJ0S8BtUqXwtL8CrG6cFzM5A4iXa2toaLxjAr3vn8r44sFPM5";
 
-		public const string SecretKey = "wQOJwAul4Cse8oKqCCCKBpJS23b2Kjdq104PNIHDZ8ogdmN550EjnjDJbuHbiG3l";
+		public const string SecretKey = "NFxPBdmA0KrlvbX3Sk2BgYWenjAEZ3zgwxeEOG0e6NWtHHzxsQdgPdZDOMSFjrQ7";
 
 		public const string Currency1 = "USDT";
 
