@@ -3,6 +3,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Security.Authentication;
 using System.Globalization;
+using System.Threading.Tasks;
 using System.Threading;
 using System.Text.Json;
 using System.Text;
@@ -252,7 +253,7 @@ namespace RoverBot
 		{
 			try
 			{
-				Logger.Write("OnKlineStreamClosed");
+				Logger.Write("KlineStreamClosed");
 
 				StartKlineStream();
 			}
@@ -276,12 +277,15 @@ namespace RoverBot
 					{
 						LastKlineUpdated = time;
 
-						Thread.Sleep(4000);
-
-						if(LoadHistory(Symbol, HistoryCount, out var history))
+						Task.Run(() =>
 						{
-							History = history;
-						}
+							Thread.Sleep(4000);
+
+							if(LoadHistory(Symbol, HistoryCount, out var history))
+							{
+								History = history;
+							}
+						});
 					}
 				}
 			}
@@ -307,13 +311,21 @@ namespace RoverBot
 				
 				if(state)
 				{
+					Task.Run(() =>
+					{
+						WriteRecord(deviation, quota);
+					});
+
 					if(deviation >= 1.892m)
 					{
 						if(quota >= 0.996m)
 						{
-							decimal takeProfit = Percent * History.Last().Close;
-							
-							BinanceFutures.OnEntryPointDetected(takeProfit);
+							Task.Run(() =>
+							{
+								decimal takeProfit = Percent * History.Last().Close;
+
+								BinanceFutures.OnEntryPointDetected(takeProfit);
+							});
 						}
 						else
 						{
@@ -324,8 +336,6 @@ namespace RoverBot
 					{
 						Console.WriteLine("Skip");
 					}
-
-					WriteRecord(deviation, quota);
 				}
 				else
 				{
@@ -539,6 +549,8 @@ namespace RoverBot
 			{
 				if(History == null)
 				{
+					Logger.Write("CheckHistory: Invalid Buffer");
+
 					return false;
 				}
 
@@ -567,6 +579,8 @@ namespace RoverBot
 
 				if(PriceServerTime > History.Last().CloseTime.AddSeconds(PriceExpiration))
 				{
+					Logger.Write("CheckHistory: Price Expired");
+
 					return false;
 				}
 

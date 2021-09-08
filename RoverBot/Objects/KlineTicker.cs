@@ -47,7 +47,7 @@ namespace RoverBot
 			}
 			catch(Exception exception)
 			{
-				Logger.Write("DateTimeFromTimeStamp: " + exception.Message);
+				Logger.Write("KlineTicker.DateTimeFromTimeStamp: " + exception.Message);
 
 				return false;
 			}

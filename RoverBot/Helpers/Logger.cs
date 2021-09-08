@@ -31,6 +31,7 @@ namespace RoverBot
 			try
 			{
 				str = str.Replace('\n', ' ');
+				str = str.Replace('\r', ' ');
 
 				Print(str + "\n\n");
 			}

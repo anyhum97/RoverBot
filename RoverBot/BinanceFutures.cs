@@ -330,7 +330,9 @@ namespace RoverBot
 									Logger.Write("PlaceLongOrder: " + record.Error.Message);
 								}
 							}
-							
+
+							//responce.Data.First().Data.AvgPrice;
+
 							Logger.Write("PlaceLongOrder: Success (Price = " + Format(price, PricePrecision) + ")");
 
 							return true;

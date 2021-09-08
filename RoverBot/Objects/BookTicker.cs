@@ -47,12 +47,14 @@ namespace RoverBot
 				}
 				else
 				{
+					Logger.Write("BookTicker.GetPrice: Invalid Input");
+
 					return false;
 				}
 			}
 			catch(Exception exception)
 			{
-				Logger.Write("BinanceBookTicker.GetPrice: " + exception.Message);
+				Logger.Write("BookTicker.GetPrice: " + exception.Message);
 
 				return false;
 			}
@@ -68,7 +70,7 @@ namespace RoverBot
 			}
 			catch(Exception exception)
 			{
-				Logger.Write("BinanceBookTicker.GetTime: " + exception.Message);
+				Logger.Write("BookTicker.GetTime: " + exception.Message);
 
 				return false;
 			}
@@ -86,7 +88,7 @@ namespace RoverBot
 			}
 			catch(Exception exception)
 			{
-				Logger.Write("DateTimeFromTimeStamp: " + exception.Message);
+				Logger.Write("BookTicker.DateTimeFromTimeStamp: " + exception.Message);
 
 				return false;
 			}
