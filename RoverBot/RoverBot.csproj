@@ -199,6 +199,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Helpers\Properties.cs" />
     <Compile Include="Helpers\Logger.cs" />
     <Compile Include="BinanceFutures.cs" />
     <Compile Include="Helpers\WebSocketFutures.cs" />

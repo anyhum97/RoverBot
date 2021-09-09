@@ -14,7 +14,7 @@ using Timer = System.Timers.Timer;
 
 namespace RoverBot
 {
-	public static class BinanceFutures
+	public static partial class BinanceFutures
 	{
 		public const string CheckLine = "******************************************************************************";
 
@@ -26,7 +26,7 @@ namespace RoverBot
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.8862(a)";
+		public const string Version = "0.8872";
 
 		public static string Symbol = Currency2 + Currency1;
 
@@ -39,30 +39,6 @@ namespace RoverBot
 		public const int PricePrecision = 2;
 
 		public const int VolumePrecision = 3;
-
-		public static decimal LastBalance { get; private set; } = default;
-
-		public static decimal Balance { get; private set; } = default;
-
-		public static decimal TotalBalance { get; private set; } = default;
-
-		public static decimal Frozen { get; private set; } = default;
-
-		public static decimal FeePrice { get; private set; } = default;
-
-		public static decimal FeeBalance { get; private set; } = default;
-
-		public static decimal FeeCoins { get; private set; } = default;
-
-		public static int CurrentLeverage { get; private set; } = default;
-
-		public static int MaxLeverage { get; private set; } = default;
-
-		public static bool InPosition { get; set; } = false;
-
-		public static bool State { get; private set; } = false;
-
-		public static bool IsTrading { get; set; } = false;
 
 		private static BinanceClient Client = default;
 
@@ -243,17 +219,17 @@ namespace RoverBot
 						}
 						else
 						{
-							Logger.Write("Already InPosition");
+							Logger.Write("Already In Position");
 						}
 					}
 					else
 					{
-						Logger.Write("EntryPoint");
+						Logger.Write("Entry Point");
 					}
 				}
 				else
 				{
-					Logger.Write("EntryPoint");
+					Logger.Write("Entry Point");
 				}
 			}
 			catch(Exception exception)
@@ -331,9 +307,9 @@ namespace RoverBot
 								}
 							}
 
-							//responce.Data.First().Data.AvgPrice;
+							Logger.Write("PlaceLongOrder: CurrentPrice = " + Format(WebSocketFutures.CurrentPrice, PricePrecision));
 
-							Logger.Write("PlaceLongOrder: Success (Price = " + Format(price, PricePrecision) + ")");
+							Logger.Write("PlaceLongOrder: Success (Price = " + Format(responce.Data.First().Data.AvgPrice, PricePrecision) + ")");
 
 							return true;
 						}
