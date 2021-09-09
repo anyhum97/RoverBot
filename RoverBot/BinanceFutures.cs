@@ -269,6 +269,8 @@ namespace RoverBot
 
 						var orders = new BinanceFuturesBatchOrder[2];
 						
+						const decimal border = 10.0m;
+
 						orders[0] = new BinanceFuturesBatchOrder()
 						{
 							Symbol = symbol,
@@ -286,8 +288,7 @@ namespace RoverBot
 							Type = OrderType.TakeProfit,
 							PositionSide = PositionSide.Both,
 							TimeInForce = TimeInForce.GoodTillCancel,
-							ActivationPrice = takeProfit,
-							StopPrice = takeProfit,
+							StopPrice = takeProfit - border,
 							Price = takeProfit,
 							Quantity = volume,
 							ReduceOnly = true,
