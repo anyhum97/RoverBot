@@ -18,6 +18,8 @@ using WebSocket = WebSocketSharp.WebSocket;
 
 using ErrorEventArgs = WebSocketSharp.ErrorEventArgs;
 
+using Timer = System.Timers.Timer;
+
 namespace RoverBot
 {
 	public static class WebSocketFutures
@@ -26,48 +28,9 @@ namespace RoverBot
 		
 		public const decimal Percent = 1.013m;
 
-		#region CurrentPrice
+		private static WebSocket KlineStream = default;
 
-		private static object LockCurrentPrice = new object();
-
-		public static event Action PriceUpdated = default;
-
-		private static decimal currentPrice = default;
-
-		public static decimal CurrentPrice
-		{
-			get
-			{
-				lock(LockCurrentPrice)
-				{
-					return currentPrice;
-				}
-			}
-
-			set
-			{
-				if(value != currentPrice)
-				{
-					lock(LockCurrentPrice)
-					{
-						currentPrice = value;
-					}
-
-					if(value > 0.0m)
-					{
-						PriceUpdationTime = DateTime.Now;
-
-						NotifyPropertyChanged(PriceUpdated);
-					}
-				}
-			}
-		}
-
-		public static DateTime PriceUpdationTime;
-
-		public static DateTime PriceServerTime;
-
-		#endregion
+		private static Timer InternalTimer = default;
 
 		#region History
 
@@ -116,6 +79,8 @@ namespace RoverBot
 			try
 			{
 				HistoryUpdated += CheckEntryPoint;
+
+				StartInternalTimer();
 			}
 			catch(Exception exception)
 			{
@@ -123,88 +88,36 @@ namespace RoverBot
 			}
 		}
 
-		public static bool StartPriceStream()
+		private static void StartInternalTimer()
 		{
 			try
 			{
-				string symbol = Symbol.ToLower();
+				InternalTimer = new Timer();
 
-				string url = "wss://fstream.binance.com/stream?streams=" + symbol + "@bookTicker";
+				InternalTimer.Interval = 30000;
 
-				WebSocket client = new WebSocket(url);
+				InternalTimer.Elapsed += InternalTimerElapsed;
 
-				client.SslConfiguration.EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls11 | SslProtocols.Tls;
-
-				client.OnMessage += OnPriceUpdated;
-
-				client.OnError += OnPriceSocketError;
-
-				client.OnClose += OnPriceStreamClosed;
-
-				client.Connect();
-
-				return true;
+				InternalTimer.Start();
 			}
 			catch(Exception exception)
 			{
-				Logger.Write("StartPriceStream: " + exception.Message);
-
-				return false;
+				Logger.Write("StartInternalTimer: " + exception.Message);
 			}
 		}
 
-		private static void OnPriceSocketError(object sender, ErrorEventArgs e)
+		private static void InternalTimerElapsed(object sender, System.Timers.ElapsedEventArgs e)
 		{
 			try
 			{
-				Logger.Write("OnPriceSocketError: " + e.Message);
-
-				StartPriceStream();
+				CheckKlineStream();
 			}
 			catch(Exception exception)
 			{
-				Logger.Write("OnPriceSocketError: " + exception.Message);
+				Logger.Write("InternalTimerElapsed: " + exception.Message);
 			}
 		}
 
-		private static void OnPriceStreamClosed(object sender, CloseEventArgs e)
-		{
-			try
-			{
-				Logger.Write("PriceStreamClosed");
-
-				StartPriceStream();
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("OnPriceStreamClosed: " + exception.Message);
-			}
-		}
-
-		private static void OnPriceUpdated(object sender, MessageEventArgs e)
-		{
-			try
-			{
-				string str = e.Data;
-
-				BookTickerStream record = JsonSerializer.Deserialize<BookTickerStream>(str);
-				
-				if(record.Data.GetPrice(out decimal price))
-				{
-					if(record.Data.GetTime(out DateTime time))
-					{
-						CurrentPrice = price;
-
-						PriceServerTime = time;
-					}
-				}
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("OnPriceUpdated: " + exception.Message);
-			}
-		}
-		
 		public static bool StartKlineStream()
 		{
 			try
@@ -213,17 +126,17 @@ namespace RoverBot
 
 				string url = "wss://fstream.binance.com/stream?streams=" + symbol + "@kline_1m";
 
-				WebSocket client = new WebSocket(url);
+				KlineStream = new WebSocket(url);
 
-				client.SslConfiguration.EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls11 | SslProtocols.Tls;
+				KlineStream.SslConfiguration.EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls11 | SslProtocols.Tls;
 
-				client.OnMessage += OnKlineUpdated;
+				KlineStream.OnMessage += OnKlineUpdated;
 
-				client.OnError += OnKlineSocketError;
+				KlineStream.OnError += OnKlineSocketError;
 
-				client.OnClose += OnKlineStreamClosed;
+				KlineStream.OnClose += OnKlineStreamClosed;
 
-				client.Connect();
+				KlineStream.Connect();
 
 				return true;
 			}
@@ -253,7 +166,7 @@ namespace RoverBot
 		{
 			try
 			{
-				Logger.Write("KlineStreamClosed");
+				Logger.Write("Kline Stream Closed");
 
 				StartKlineStream();
 			}
@@ -294,6 +207,45 @@ namespace RoverBot
 				Logger.Write("OnKlineUpdated: " + exception.Message);
 			}
 		}
+		
+		private static void CheckKlineStream()
+		{
+			try
+			{
+				if(KlineStream == default)
+				{
+					Logger.Write("CheckKlineStream: Invalid Stream");
+
+					StartKlineStream();
+
+					return;
+				}
+
+				if(KlineStream.IsAlive == false)
+				{
+					Logger.Write("CheckKlineStream: Kline Stream Closed");
+
+					StartKlineStream();
+
+					return;
+				}
+
+				const double KlineStreamExpiration = 120.0;
+
+				if(LastKlineUpdated.AddSeconds(KlineStreamExpiration) <= DateTime.Now)
+				{
+					Logger.Write("CheckKlineStream: Kline Updation Failed");
+
+					StartKlineStream();
+
+					return;
+				}
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("CheckKlineStream: " + exception.Message);
+			}
+		}
 
 		private static void CheckEntryPoint()
 		{
@@ -322,9 +274,11 @@ namespace RoverBot
 						{
 							Task.Run(() =>
 							{
+								decimal price = History.Last().Close;
+
 								decimal takeProfit = Percent * History.Last().Close;
 
-								BinanceFutures.OnEntryPointDetected(takeProfit);
+								BinanceFutures.OnEntryPointDetected(price, takeProfit);
 							});
 						}
 						else
@@ -547,7 +501,7 @@ namespace RoverBot
 		{
 			try
 			{
-				if(History == null)
+				if(History == default)
 				{
 					Logger.Write("CheckHistory: Invalid Buffer");
 
@@ -573,15 +527,6 @@ namespace RoverBot
 
 						return false;
 					}
-				}
-
-				const double PriceExpiration = 10.0;
-
-				if(PriceServerTime > History.Last().CloseTime.AddSeconds(PriceExpiration))
-				{
-					Logger.Write("CheckHistory: Price Expired");
-
-					return false;
 				}
 
 				return true;

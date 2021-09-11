@@ -26,7 +26,7 @@ namespace RoverBot
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.8872";
+		public const string Version = "0.8874";
 
 		public static string Symbol = Currency2 + Currency1;
 
@@ -57,8 +57,6 @@ namespace RoverBot
 				Client = new BinanceClient();
 				
 				Client.SetApiCredentials(ApiKey, SecretKey);
-				
-				WebSocketFutures.StartPriceStream();
 				
 				WebSocketFutures.StartKlineStream();
 				
@@ -184,7 +182,7 @@ namespace RoverBot
 			}
 		}
 
-		public static void OnEntryPointDetected(decimal takeProfit)
+		public static void OnEntryPointDetected(decimal price, decimal takeProfit)
 		{
 			try
 			{
@@ -196,8 +194,6 @@ namespace RoverBot
 						{
 							if(CurrentLeverage == DefaultLeverage)
 							{
-								decimal price = WebSocketFutures.CurrentPrice;
-
 								const decimal depositFactor = 0.98m;
 
 								decimal deposit = depositFactor * Balance;
@@ -206,7 +202,7 @@ namespace RoverBot
 
 								decimal volume = deals * VolumeFilter;
 
-								PlaceLongOrder(Symbol, volume, takeProfit);
+								PlaceLongOrder(Symbol, volume, price, takeProfit);
 
 								CheckPosition(Symbol);
 
@@ -238,13 +234,13 @@ namespace RoverBot
 			}
 		}
 
-		private static bool PlaceLongOrder(string symbol, decimal volume, decimal takeProfit)
+		private static bool PlaceLongOrder(string symbol, decimal volume, decimal price, decimal takeProfit)
 		{
 			try
 			{
 				if(IsValid())
 				{
-					if(WebSocketFutures.CurrentPrice > 0.0m)
+					if(price > 0.0m)
 					{
 						if(symbol == null)
 						{
@@ -257,8 +253,6 @@ namespace RoverBot
 						{
 							return false;
 						}
-
-						decimal price = WebSocketFutures.CurrentPrice;
 
 						takeProfit = Math.Round(takeProfit, PricePrecision);
 						
@@ -308,7 +302,7 @@ namespace RoverBot
 								}
 							}
 
-							Logger.Write("PlaceLongOrder: CurrentPrice = " + Format(WebSocketFutures.CurrentPrice, PricePrecision));
+							Logger.Write("PlaceLongOrder: HistoryPrice = " + Format(price, PricePrecision));
 
 							Logger.Write("PlaceLongOrder: Success (Price = " + Format(responce.Data.First().Data.AvgPrice, PricePrecision) + ")");
 
