@@ -120,7 +120,7 @@ namespace RoverBot
 			{
 				InternalTimer1 = new Timer();
 
-				InternalTimer1.Interval = 20000;
+				InternalTimer1.Interval = 30000;
 
 				InternalTimer1.Elapsed += InternalTimerElapsed1;
 
@@ -706,7 +706,7 @@ namespace RoverBot
 				{
 					IsTrading = true;
 
-					if(responce.Data.ToList().First().IsolatedMargin == 0.0m)
+					if(responce.Data.ToList().First().IsolatedMargin == default)
 					{
 						if(InPosition)
 						{

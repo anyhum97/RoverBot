@@ -275,7 +275,7 @@ namespace RoverBot
 					return;
 				}
 
-				if(KlineStream.IsAlive == false)
+				if(KlineStream.IsAlive == default)
 				{
 					Logger.Write("CheckKlineStream: Kline Stream Closed");
 
