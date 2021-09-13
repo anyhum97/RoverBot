@@ -26,7 +26,7 @@ namespace RoverBot
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.8874";
+		public const string Version = "0.888";
 
 		public static string Symbol = Currency2 + Currency1;
 
@@ -234,7 +234,7 @@ namespace RoverBot
 			}
 		}
 
-		private static bool PlaceLongOrder(string symbol, decimal volume, decimal price, decimal takeProfit)
+		private static bool PlaceLongOrder(string symbol, decimal volume, decimal price, decimal takeProfit1)
 		{
 			try
 			{
@@ -254,16 +254,27 @@ namespace RoverBot
 							return false;
 						}
 
-						takeProfit = Math.Round(takeProfit, PricePrecision);
+						takeProfit1 = Math.Round(takeProfit1, PricePrecision);
 						
-						if(takeProfit <= price)
+						if(takeProfit1 <= price)
 						{
 							return false;
 						}
 
-						var orders = new BinanceFuturesBatchOrder[2];
-						
+						const decimal percent = 1.01m;
+
+						decimal takeProfit2 = percent * takeProfit1;
+
+						takeProfit2 = Math.Round(takeProfit2, PricePrecision);
+
+						if(takeProfit2 <= price)
+						{
+							return false;
+						}
+
 						const decimal border = 10.0m;
+
+						var orders = new BinanceFuturesBatchOrder[3];
 
 						orders[0] = new BinanceFuturesBatchOrder()
 						{
@@ -282,12 +293,25 @@ namespace RoverBot
 							Type = OrderType.TakeProfit,
 							PositionSide = PositionSide.Both,
 							TimeInForce = TimeInForce.GoodTillCancel,
-							StopPrice = takeProfit - border,
-							Price = takeProfit,
+							StopPrice = takeProfit1 - border,
+							Price = takeProfit1,
 							Quantity = volume,
 							ReduceOnly = true,
 						};
-						
+
+						orders[2] = new BinanceFuturesBatchOrder()
+						{
+							Symbol = symbol,
+							Side = OrderSide.Sell,
+							Type = OrderType.TakeProfit,
+							PositionSide = PositionSide.Both,
+							TimeInForce = TimeInForce.GoodTillCancel,
+							StopPrice = takeProfit2 - border,
+							Price = takeProfit2,
+							Quantity = volume,
+							ReduceOnly = true,
+						};
+
 						var responce = Client.FuturesUsdt.Order.PlaceMultipleOrders(orders);
 						
 						if(responce.Success)
@@ -302,9 +326,11 @@ namespace RoverBot
 								}
 							}
 
+							decimal orderPrice = responce.Data.First().Data.AvgPrice;
+
 							Logger.Write("PlaceLongOrder: HistoryPrice = " + Format(price, PricePrecision));
 
-							Logger.Write("PlaceLongOrder: Success (Price = " + Format(responce.Data.First().Data.AvgPrice, PricePrecision) + ")");
+							Logger.Write("PlaceLongOrder: OrderPrice = " + Format(orderPrice, PricePrecision));
 
 							return true;
 						}
@@ -345,7 +371,7 @@ namespace RoverBot
 			{
 				const int attempts = 3;
 
-				for(int i=0; i<attempts; ++i)
+				for(int i=default; i<attempts; ++i)
 				{
 					var responce = Client.FuturesUsdt.Order.CancelAllOrders(symbol);
 
@@ -369,33 +395,6 @@ namespace RoverBot
 			}
 		}
 
-		private static bool UpdateFeePrice()
-		{
-			try
-			{
-				var responce = Client.Spot.Market.GetPrice("BNBUSDT");
-
-				if(responce.Success)
-				{
-					FeePrice = responce.Data.Price;
-
-					return true;
-				}
-				else
-				{
-					Logger.Write("UpdateFeePrice: " + responce.Error.Message);
-
-					return false;
-				}
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("UpdateFeePrice: " + exception.Message);
-
-				return false;
-			}
-		}
-
 		private static bool UpdateBalance()
 		{
 			try
@@ -408,7 +407,7 @@ namespace RoverBot
 					{
 						var list = responce.Data.ToList();
 
-						for(int i=0; i<list.Count; ++i)
+						for(int i=default; i<list.Count; ++i)
 						{
 							if(list[i].Asset == Currency1)
 							{
@@ -460,6 +459,93 @@ namespace RoverBot
 				Logger.Write("UpdateBalance: " + exception.Message);
 
 				return false;
+			}
+		}
+
+		private static bool UpdateFeePrice()
+		{
+			try
+			{
+				var responce = Client.Spot.Market.GetPrice("BNBUSDT");
+
+				if(responce.Success)
+				{
+					FeePrice = responce.Data.Price;
+
+					return true;
+				}
+				else
+				{
+					Logger.Write("UpdateFeePrice: " + responce.Error.Message);
+
+					return false;
+				}
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("UpdateFeePrice: " + exception.Message);
+
+				return false;
+			}
+		}
+
+		private static bool SetIsolatedTrading()
+		{
+			try
+			{
+				if(IsValid())
+				{
+					var result = Client.FuturesUsdt.ChangeMarginType(Symbol, FuturesMarginType.Isolated);
+
+					if(result.Success)
+					{
+						return true;
+					}
+					else
+					{
+						if(result.Error.Message.Contains("No need to change margin type"))
+						{
+							return true;
+						}
+						else
+						{
+							Logger.Write("SetIsolatedTrading: " + result.Error);
+
+							return false;
+						}
+					}
+				}
+				else
+				{
+					Logger.Write("SetIsolatedTrading: Invalid Account");
+
+					return false;
+				}
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("SetIsolatedTrading: " + exception.Message);
+
+				return false;
+			}
+		}
+
+		private static void SetTradeParams()
+		{
+			try
+			{
+				Task.Run(() =>
+				{
+					SetIsolatedTrading();
+					
+					SetLeverage(DefaultLeverage);
+					
+					UpdateBalance();
+				});
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("SetTradeParams: " + exception.Message);
 			}
 		}
 
@@ -528,7 +614,7 @@ namespace RoverBot
 
 						const int attempts = 3;
 
-						for(int i = 0; i<attempts; ++i)
+						for(int i=default; i<attempts; ++i)
 						{
 							success = GetMaxLeverage();
 
@@ -607,47 +693,6 @@ namespace RoverBot
 				return false;
 			}
 		}
-
-		private static bool SetIsolatedTrading()
-		{
-			try
-			{
-				if(IsValid())
-				{
-					var result = Client.FuturesUsdt.ChangeMarginType(Symbol, FuturesMarginType.Isolated);
-
-					if(result.Success)
-					{
-						return true;
-					}
-					else
-					{
-						if(result.Error.Message.Contains("No need to change margin type"))
-						{
-							return true;
-						}
-						else
-						{
-							Logger.Write("SetIsolatedTrading: " + result.Error);
-
-							return false;
-						}
-					}
-				}
-				else
-				{
-					Logger.Write("SetIsolatedTrading: Invalid Account");
-
-					return false;
-				}
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("SetIsolatedTrading: " + exception.Message);
-
-				return false;
-			}
-		}
 		
 		private static bool CheckPosition(string symbol)
 		{
@@ -693,25 +738,6 @@ namespace RoverBot
 				Logger.Write("CheckPosition: " + exception.Message);
 
 				return false;
-			}
-		}
-
-		private static void SetTradeParams()
-		{
-			try
-			{
-				Task.Run(() =>
-				{
-					SetIsolatedTrading();
-					
-					SetLeverage(DefaultLeverage);
-					
-					UpdateBalance();
-				});
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("SetTradeParams: " + exception.Message);
 			}
 		}
 

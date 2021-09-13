@@ -38,7 +38,7 @@ namespace RoverBot
 			{
 				StringBuilder stringBuilder = new StringBuilder();
 				
-				for(int i=0; i<history.Count; ++i)
+				for(int i=default; i<history.Count; ++i)
 				{
 					stringBuilder.Append(history[i].Format());
 

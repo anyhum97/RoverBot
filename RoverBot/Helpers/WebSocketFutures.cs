@@ -59,18 +59,68 @@ namespace RoverBot
 
 				if(CheckHistory())
 				{
-					HistoryUpdationTime = DateTime.Now;
-
 					NotifyPropertyChanged(HistoryUpdated);
 				}
 			}
 		}
 
-		public static DateTime HistoryUpdationTime;
-
 		public static DateTime LastKlineUpdated;
 
 		public const int HistoryCount = 180;
+
+		#endregion
+		
+		#region StartUpdationTime
+
+		private static object LockStartUpdationTime = new object();
+
+		private static DateTime startUpdationTime;
+
+		public static DateTime StartUpdationTime
+		{
+			get
+			{
+				lock(LockStartUpdationTime)
+				{
+					return startUpdationTime;
+				}
+			}
+
+			set
+			{
+				lock(LockStartUpdationTime)
+				{
+					startUpdationTime = value;
+				}
+			}
+		}
+
+		#endregion
+
+		#region StopUpdationTime
+
+		private static object LockStopUpdationTime = new object();
+
+		private static DateTime stopUpdationTime;
+
+		public static DateTime StopUpdationTime
+		{
+			get
+			{
+				lock(LockStopUpdationTime)
+				{
+					return stopUpdationTime;
+				}
+			}
+
+			set
+			{
+				lock(LockStopUpdationTime)
+				{
+					stopUpdationTime = value;
+				}
+			}
+		}
 
 		#endregion
 
@@ -194,6 +244,8 @@ namespace RoverBot
 						{
 							Thread.Sleep(4000);
 
+							StartUpdationTime = DateTime.Now;
+
 							if(LoadHistory(Symbol, HistoryCount, out var history))
 							{
 								History = history;
@@ -232,9 +284,18 @@ namespace RoverBot
 
 				const double KlineStreamExpiration = 120.0;
 
-				if(LastKlineUpdated.AddSeconds(KlineStreamExpiration) <= DateTime.Now)
+				if(StartUpdationTime.AddSeconds(KlineStreamExpiration) <= DateTime.Now)
 				{
-					Logger.Write("CheckKlineStream: Kline Updation Failed");
+					Logger.Write("CheckKlineStream: Kline Updation Failed [1]");
+
+					StartKlineStream();
+
+					return;
+				}
+
+				if(StopUpdationTime.AddSeconds(KlineStreamExpiration) <= DateTime.Now)
+				{
+					Logger.Write("CheckKlineStream: Kline Updation Failed [2]");
 
 					StartKlineStream();
 
@@ -276,7 +337,7 @@ namespace RoverBot
 							{
 								decimal price = History.Last().Close;
 
-								decimal takeProfit = Percent * History.Last().Close;
+								decimal takeProfit = Percent * price;
 
 								BinanceFutures.OnEntryPointDetected(price, takeProfit);
 							});
@@ -308,15 +369,24 @@ namespace RoverBot
 			{
 				StringBuilder stringBuilder = new StringBuilder();
 				
-				stringBuilder.Append(History.Last().CloseTime.ToString("dd.MM.yyyy HH:mm"));
+				TimeSpan timeSpan = StopUpdationTime - StartUpdationTime;
+
+				string time = History.Last().CloseTime.ToString("dd.MM.yyyy HH:mm");
+
+				string updationTime = string.Format("[{0}]", Format(timeSpan.TotalSeconds, 4));
+
+				stringBuilder.Append(time);
 				stringBuilder.Append("\t");
 				
 				stringBuilder.Append(Format(deviation, 4));
 				stringBuilder.Append("\t");
 				
 				stringBuilder.Append(Format(quota, 4));
-				stringBuilder.Append("\n");
+				stringBuilder.Append("\t");
 				
+				stringBuilder.Append(updationTime);
+				stringBuilder.Append("\n");
+
 				File.AppendAllText("Records.txt", stringBuilder.ToString());
 			}
 			catch(Exception exception)
@@ -529,6 +599,19 @@ namespace RoverBot
 					}
 				}
 
+				StopUpdationTime = DateTime.Now;
+
+				TimeSpan timeSpan = StopUpdationTime - StartUpdationTime;
+
+				const double HistoryExpired = 6.0;
+
+				if(timeSpan.TotalSeconds >= HistoryExpired)
+				{
+					Logger.Write("CheckHistory: History Expired");
+
+					return false;
+				}
+
 				return true;
 			}
 			catch(Exception exception)
@@ -551,6 +634,23 @@ namespace RoverBot
 			catch(Exception exception)
 			{
 				Logger.Write("NotifyPropertyChanged: " + exception.Message);
+			}
+		}
+
+		private static string Format(double value, int sign = 4)
+		{
+			try
+			{
+				sign = Math.Max(sign, 0);
+				sign = Math.Min(sign, 8);
+
+				return string.Format(CultureInfo.InvariantCulture, "{0:F" + sign + "}", value);
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("Format: " + exception.Message);
+
+				return "Invalid Format";
 			}
 		}
 
