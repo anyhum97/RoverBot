@@ -202,6 +202,8 @@ namespace RoverBot
 
 								decimal volume = deals * VolumeFilter;
 
+								Logger.Write("OnEntryPointDetected: [Entry Point]");
+
 								PlaceLongOrder(Symbol, volume, price, takeProfit);
 
 								CheckPosition(Symbol);
@@ -210,27 +212,27 @@ namespace RoverBot
 							}
 							else
 							{
-								Logger.Write("Invalid Leverage");
+								Logger.Write("OnEntryPointDetected: Invalid Leverage");
 							}
 						}
 						else
 						{
-							Logger.Write("Already In Position");
+							Logger.Write("OnEntryPointDetected: Already In Position");
 						}
 					}
 					else
 					{
-						Logger.Write("Entry Point");
+						Logger.Write("OnEntryPointDetected: [Entry Point]");
 					}
 				}
 				else
 				{
-					Logger.Write("Entry Point");
+					Logger.Write("OnEntryPointDetected: [Entry Point]");
 				}
 			}
 			catch(Exception exception)
 			{
-				Logger.Write("OnLongEntryPointDetected: " + exception.Message);
+				Logger.Write("OnEntryPointDetected: " + exception.Message);
 			}
 		}
 

@@ -28,6 +28,8 @@ namespace RoverBot
 		
 		public const decimal Percent = 1.013m;
 
+		private static object LockRecordFile = new object();
+
 		private static WebSocket KlineStream = default;
 
 		private static Timer InternalTimer = default;
@@ -387,7 +389,10 @@ namespace RoverBot
 				stringBuilder.Append(updationTime);
 				stringBuilder.Append("\n");
 
-				File.AppendAllText("Records.txt", stringBuilder.ToString());
+				lock(LockRecordFile)
+				{
+					File.AppendAllText("Records.txt", stringBuilder.ToString());
+				}
 			}
 			catch(Exception exception)
 			{
