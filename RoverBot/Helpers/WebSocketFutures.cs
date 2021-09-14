@@ -66,12 +66,37 @@ namespace RoverBot
 			}
 		}
 
-		public static DateTime LastKlineUpdated;
-
 		public const int HistoryCount = 180;
 
 		#endregion
 		
+		#region LastKlineUpdated
+
+		private static object LockLastKlineUpdated = new object();
+
+		private static DateTime lastKlineUpdated;
+
+		public static DateTime LastKlineUpdated
+		{
+			get
+			{
+				lock(LockLastKlineUpdated)
+				{
+					return lastKlineUpdated;
+				}
+			}
+
+			set
+			{
+				lock(LockLastKlineUpdated)
+				{
+					lastKlineUpdated = value;
+				}
+			}
+		}
+
+		#endregion
+
 		#region StartUpdationTime
 
 		private static object LockStartUpdationTime = new object();
@@ -126,6 +151,33 @@ namespace RoverBot
 
 		#endregion
 
+		#region CloseAction
+
+		private static object LockCloseAction = new object();
+
+		private static bool closeAction;
+
+		public static bool CloseAction
+		{
+			get
+			{
+				lock(LockCloseAction)
+				{
+					return closeAction;
+				}
+			}
+
+			set
+			{
+				lock(LockCloseAction)
+				{
+					closeAction = value;
+				}
+			}
+		}
+
+		#endregion
+
 		static WebSocketFutures()
 		{
 			try
@@ -174,9 +226,11 @@ namespace RoverBot
 		{
 			try
 			{
+				StopKlineStream();
+
 				string symbol = Symbol.ToLower();
 
-				string url = "wss://fstream.binance.com/stream?streams=" + symbol + "@kline_1m";
+				string url = "wss://fstream.binance.com/stream?streams=" + symbol + "@kline_1m";				
 
 				KlineStream = new WebSocket(url);
 
@@ -200,6 +254,38 @@ namespace RoverBot
 			}
 		}
 
+		public static bool StopKlineStream()
+		{
+			try
+			{
+				if(KlineStream != default)
+				{
+					try
+					{
+						CloseAction = true;
+
+						KlineStream.Close();
+					}
+					catch(Exception exception)
+					{
+						Logger.Write("StopKlineStream: " + exception.Message);
+					}
+				}
+
+				KlineStream = default;
+
+				CloseAction = default;
+
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("StopKlineStream: " + exception.Message);
+
+				return false;
+			}
+		}
+
 		private static void OnKlineSocketError(object sender, ErrorEventArgs e)
 		{
 			try
@@ -218,9 +304,12 @@ namespace RoverBot
 		{
 			try
 			{
-				Logger.Write("Kline Stream Closed");
+				if(CloseAction == default)
+				{
+					Logger.Write("OnKlineStreamClosed: Kline Stream Closed");
 
-				StartKlineStream();
+					StartKlineStream();
+				}
 			}
 			catch(Exception exception)
 			{
@@ -275,18 +364,9 @@ namespace RoverBot
 					return;
 				}
 
-				if(KlineStream.IsAlive == default)
-				{
-					Logger.Write("CheckKlineStream: Kline Stream Closed");
+				const double KlineExpiration = 120.0;
 
-					StartKlineStream();
-
-					return;
-				}
-
-				const double KlineStreamExpiration = 120.0;
-
-				if(StartUpdationTime.AddSeconds(KlineStreamExpiration) <= DateTime.Now)
+				if(StartUpdationTime.AddSeconds(KlineExpiration) <= DateTime.Now)
 				{
 					Logger.Write("CheckKlineStream: Kline Updation Failed [1]");
 
@@ -295,7 +375,7 @@ namespace RoverBot
 					return;
 				}
 
-				if(StopUpdationTime.AddSeconds(KlineStreamExpiration) <= DateTime.Now)
+				if(StopUpdationTime.AddSeconds(KlineExpiration) <= DateTime.Now)
 				{
 					Logger.Write("CheckKlineStream: Kline Updation Failed [2]");
 
@@ -356,7 +436,7 @@ namespace RoverBot
 				}
 				else
 				{
-					Console.WriteLine("Invalid Model");
+					Logger.Write("Invalid Model");
 				}
 			}
 			catch(Exception exception)
@@ -612,7 +692,9 @@ namespace RoverBot
 
 				if(timeSpan.TotalSeconds >= HistoryExpired)
 				{
-					Logger.Write("CheckHistory: History Expired");
+					string error = string.Format("CheckHistory: History Expired [{0}]", Format(timeSpan.TotalSeconds, 4));
+
+					Logger.Write(error);
 
 					return false;
 				}
