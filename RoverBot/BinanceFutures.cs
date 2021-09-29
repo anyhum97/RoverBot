@@ -244,7 +244,7 @@ namespace RoverBot
 				{
 					if(price > 0.0m)
 					{
-						if(symbol == null)
+						if(symbol == default)
 						{
 							return false;
 						}
@@ -444,7 +444,7 @@ namespace RoverBot
 					}
 					else
 					{
-						Logger.Write("UpdateBalance: Bad Request");
+						Logger.Write("UpdateBalance: " + responce.Error.Message);
 
 						return false;
 					}
@@ -497,21 +497,21 @@ namespace RoverBot
 			{
 				if(IsValid())
 				{
-					var result = Client.FuturesUsdt.ChangeMarginType(Symbol, FuturesMarginType.Isolated);
+					var responce = Client.FuturesUsdt.ChangeMarginType(Symbol, FuturesMarginType.Isolated);
 
-					if(result.Success)
+					if(responce.Success)
 					{
 						return true;
 					}
 					else
 					{
-						if(result.Error.Message.Contains("No need to change margin type"))
+						if(responce.Error.Message.Contains("No need to change margin type"))
 						{
 							return true;
 						}
 						else
 						{
-							Logger.Write("SetIsolatedTrading: " + result.Error);
+							Logger.Write("SetIsolatedTrading: " + responce.Error.Message);
 
 							return false;
 						}
@@ -557,13 +557,13 @@ namespace RoverBot
 			{
 				if(IsValid())
 				{
-					var result = Client.FuturesUsdt.GetBrackets(Symbol);
+					var responce = Client.FuturesUsdt.GetBrackets(Symbol);
 
-					if(result.Success)
+					if(responce.Success)
 					{
 						MaxLeverage = default;
 
-						List<BinanceFuturesSymbolBracket> list = result.Data.ToList();
+						List<BinanceFuturesSymbolBracket> list = responce.Data.ToList();
 
 						foreach(var record in list)
 						{
@@ -580,7 +580,7 @@ namespace RoverBot
 					}
 					else
 					{
-						Logger.Write("GetMaxLeverage: " + result.Error);
+						Logger.Write("GetMaxLeverage: " + responce.Error.Message);
 
 						return false;
 					}
@@ -659,11 +659,11 @@ namespace RoverBot
 						return false;
 					}
 
-					var result = Client.FuturesUsdt.ChangeInitialLeverage(Symbol, leverage);
+					var responce = Client.FuturesUsdt.ChangeInitialLeverage(Symbol, leverage);
 
-					if(result.Success)
+					if(responce.Success)
 					{
-						if(result.Data.Leverage == leverage)
+						if(responce.Data.Leverage == leverage)
 						{
 							CurrentLeverage = leverage;
 
@@ -676,7 +676,7 @@ namespace RoverBot
 					}
 					else
 					{
-						Logger.Write("SetLeverage: " + result.Error);
+						Logger.Write("SetLeverage: " + responce.Error.Message);
 
 						return false;
 					}
@@ -728,7 +728,7 @@ namespace RoverBot
 				}
 				else
 				{
-					IsTrading = false;
+					IsTrading = default;
 
 					Logger.Write("CheckPosition: " + responce.Error.Message);
 

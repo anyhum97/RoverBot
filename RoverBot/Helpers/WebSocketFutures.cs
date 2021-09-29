@@ -436,7 +436,7 @@ namespace RoverBot
 				}
 				else
 				{
-					Logger.Write("Invalid Model");
+					Logger.Write("CheckEntryPoint: Invalid Model");
 				}
 			}
 			catch(Exception exception)
