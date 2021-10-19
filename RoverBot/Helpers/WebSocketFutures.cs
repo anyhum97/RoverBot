@@ -208,7 +208,7 @@ namespace RoverBot
 					Task.Run(() =>
 					{
 						BinanceFutures.RestartRoverBot();
-					});					
+					});
 				}
 			}
 		}

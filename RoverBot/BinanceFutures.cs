@@ -116,6 +116,35 @@ namespace RoverBot
 			}
 		}
 		
+		public static void RestartRoverBot()
+		{
+			try
+			{
+				const string FileName = "RestartRoverBot.exe";
+
+				if(File.Exists(FileName))
+				{
+					Logger.Write("RoverBot: Restarting...");
+
+					Process process = new Process();
+
+					process.StartInfo.FileName = FileName;
+
+					process.StartInfo.WorkingDirectory = Directory.GetCurrentDirectory();
+
+					process.Start();
+				}
+				else
+				{
+					Logger.Write("RestartRoverBot: Invalid File");
+				}
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("RestartRoverBot: " + exception.Message);
+			}
+		}
+
 		private static void StartInternalTimer1()
 		{
 			try
@@ -235,35 +264,6 @@ namespace RoverBot
 			catch(Exception exception)
 			{
 				Logger.Write("OnEntryPointDetected: " + exception.Message);
-			}
-		}
-
-		public static void RestartRoverBot()
-		{
-			try
-			{
-				const string FileName = "RestartRoverBot.exe";
-
-				if(File.Exists(FileName))
-				{
-					Logger.Write("RoverBot: Restarting...");
-
-					Process process = new Process();
-
-					process.StartInfo.FileName = FileName;
-
-					process.StartInfo.WorkingDirectory = Directory.GetCurrentDirectory();
-
-					process.Start();
-				}
-				else
-				{
-					Logger.Write("RestartRoverBot: Invalid File");
-				}
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("RestartRoverBot: " + exception.Message);
 			}
 		}
 
