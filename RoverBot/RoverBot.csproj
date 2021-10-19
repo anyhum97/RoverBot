@@ -7,7 +7,7 @@
     <ProjectGuid>{46B25CCD-B64D-4F32-AB72-099CB2B1FB3D}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>RoverBot</RootNamespace>
-    <AssemblyName>RoverBotFutures</AssemblyName>
+    <AssemblyName>RoverBot</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>

@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Threading.Tasks;
+using System.Diagnostics;
 using System.Threading;
 using System.Linq;
+using System.IO;
 
 using Binance.Net;
 using Binance.Net.Enums;
@@ -26,7 +28,7 @@ namespace RoverBot
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.888";
+		public const string Version = "0.889";
 
 		public static string Symbol = Currency2 + Currency1;
 
@@ -52,7 +54,7 @@ namespace RoverBot
 			{
 				Logger.Write(CheckLine);
 
-				Logger.Write("FuturesBot Version " + Version + " Started");
+				Logger.Write("RoverBot Version " + Version + " Started");
 
 				Client = new BinanceClient();
 				
@@ -233,6 +235,35 @@ namespace RoverBot
 			catch(Exception exception)
 			{
 				Logger.Write("OnEntryPointDetected: " + exception.Message);
+			}
+		}
+
+		public static void RestartRoverBot()
+		{
+			try
+			{
+				const string FileName = "RestartRoverBot.exe";
+
+				if(File.Exists(FileName))
+				{
+					Logger.Write("RoverBot: Restarting...");
+
+					Process process = new Process();
+
+					process.StartInfo.FileName = FileName;
+
+					process.StartInfo.WorkingDirectory = Directory.GetCurrentDirectory();
+
+					process.Start();
+				}
+				else
+				{
+					Logger.Write("RestartRoverBot: Invalid File");
+				}
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("RestartRoverBot: " + exception.Message);
 			}
 		}
 

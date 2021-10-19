@@ -178,6 +178,43 @@ namespace RoverBot
 
 		#endregion
 
+		#region Errors
+
+		private static object LockErrors = new object();
+
+		private static int errors = default;
+
+		public static int Errors
+		{
+			get
+			{
+				lock(LockErrors)
+				{
+					return errors;
+				}
+			}
+
+			set
+			{
+				lock(LockErrors)
+				{
+					errors = value;
+				}
+
+				const int MaxErrors = 2;
+
+				if(value >= MaxErrors)
+				{
+					Task.Run(() =>
+					{
+						BinanceFutures.RestartRoverBot();
+					});					
+				}
+			}
+		}
+
+		#endregion
+
 		static WebSocketFutures()
 		{
 			try
@@ -372,6 +409,8 @@ namespace RoverBot
 
 					StartKlineStream();
 
+					++Errors;
+
 					return;
 				}
 
@@ -381,8 +420,12 @@ namespace RoverBot
 
 					StartKlineStream();
 
+					++Errors;
+
 					return;
 				}
+
+				Errors = default;
 			}
 			catch(Exception exception)
 			{
