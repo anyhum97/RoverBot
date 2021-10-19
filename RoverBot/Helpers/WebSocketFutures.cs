@@ -445,7 +445,7 @@ namespace RoverBot
 
 				state = state && GetDeviationFactor(History, 140, out deviation);
 
-				state = state && GetQuota(History, 28, out quota);
+				state = state && GetQuota(History, 30, out quota);
 				
 				if(state)
 				{
@@ -454,7 +454,7 @@ namespace RoverBot
 						WriteRecord(deviation, quota);
 					});
 
-					if(deviation >= 1.892m)
+					if(deviation >= 1.9m)
 					{
 						if(quota >= 0.996m)
 						{
