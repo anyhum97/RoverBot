@@ -343,6 +343,8 @@ namespace RoverBot
 			{
 				if(CloseAction == default)
 				{
+					Thread.Sleep(2000);
+
 					Logger.Write("OnKlineStreamClosed: Kline Stream Closed");
 
 					StartKlineStream();
