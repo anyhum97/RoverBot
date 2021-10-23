@@ -54,7 +54,7 @@ namespace RoverBot
 			{
 				Logger.Write(CheckLine);
 
-				Logger.Write("RoverBot Version " + Version + " Started");
+				Logger.Write(string.Format("RoverBot({0}) Version {1} Started", Symbol, Version));
 
 				Client = new BinanceClient();
 				
