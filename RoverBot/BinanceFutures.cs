@@ -20,13 +20,13 @@ namespace RoverBot
 	{
 		public const string CheckLine = "******************************************************************************";
 
-		public const string ApiKey = "2SZQJS9YCll34RsYJ0S8BtUqXwtL8CrG6cFzM5A4iXa2toaLxjAr3vn8r44sFPM5";
+		public const string ApiKey = "hZvlK2Ctyn1m5KNiTeKmNEW2M6TjrJul8PINjQPnLh0pinSWeeEdyrp7YwzYrHEH";
 
-		public const string SecretKey = "NFxPBdmA0KrlvbX3Sk2BgYWenjAEZ3zgwxeEOG0e6NWtHHzxsQdgPdZDOMSFjrQ7";
+		public const string SecretKey = "2xxr7OFRaIo3rLBaKWxVzARxA4pvPLH7BponIThwzva1tnPnyvS6ZACaRtaY9RaR";
 
 		public const string Currency1 = "USDT";
 
-		public const string Currency2 = "BTC";
+		public const string Currency2 = "ETH";
 
 		public const string Version = "0.889";
 
@@ -36,7 +36,7 @@ namespace RoverBot
 
 		public const decimal VolumeFilter = 0.001m;
 
-		public const int DefaultLeverage = 6;
+		public const int DefaultLeverage = 3;
 
 		public const int PricePrecision = 2;
 
@@ -305,7 +305,7 @@ namespace RoverBot
 							return false;
 						}
 
-						const decimal border = 10.0m;
+						const decimal border = 2.0m;
 
 						var orders = new BinanceFuturesBatchOrder[3];
 

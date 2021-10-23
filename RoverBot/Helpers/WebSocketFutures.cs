@@ -24,9 +24,9 @@ namespace RoverBot
 {
 	public static class WebSocketFutures
 	{
-		private const string Symbol = "BTCUSDT";
+		private const string Symbol = "ETHUSDT";
 		
-		public const decimal Percent = 1.013m;
+		public const decimal Percent = 1.0185m;
 
 		private static object LockRecordFile = new object();
 
@@ -343,6 +343,8 @@ namespace RoverBot
 			{
 				if(CloseAction == default)
 				{
+					Thread.Sleep(2000);
+
 					Logger.Write("OnKlineStreamClosed: Kline Stream Closed");
 
 					StartKlineStream();
@@ -445,7 +447,7 @@ namespace RoverBot
 
 				state = state && GetDeviationFactor(History, 140, out deviation);
 
-				state = state && GetQuota(History, 30, out quota);
+				state = state && GetQuota(History, 28, out quota);
 				
 				if(state)
 				{
@@ -454,9 +456,9 @@ namespace RoverBot
 						WriteRecord(deviation, quota);
 					});
 
-					if(deviation >= 1.9m)
+					if(deviation >= 2.128m)
 					{
-						if(quota >= 0.996m)
+						if(quota >= 0.998m)
 						{
 							Task.Run(() =>
 							{
