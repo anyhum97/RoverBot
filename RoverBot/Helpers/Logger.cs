@@ -5,7 +5,7 @@ namespace RoverBot
 {
 	public static class Logger
 	{
-		public static bool IsConsoleEnabled { get; set; } = true;
+		public static bool IsConsoleEnabled { get; set; } = default;
 		
 		private const string LogFilePath = "RoverBot.txt";
 		
