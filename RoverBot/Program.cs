@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading;
 
 namespace RoverBot
@@ -9,6 +10,8 @@ namespace RoverBot
 		{
 			try
 			{
+				BinanceFutures.StartRoverBotAsync().Wait();
+
 				while(BinanceFutures.IsValid())
 				{
 					Thread.Sleep(1000);

@@ -376,10 +376,7 @@ namespace RoverBot
 
 							StartUpdationTime = DateTime.Now;
 
-							if(LoadHistory(Symbol, HistoryCount, out var history))
-							{
-								History = history;
-							}
+							LoadHistory(Symbol, HistoryCount).Wait();
 						});
 					}
 				}
@@ -660,15 +657,15 @@ namespace RoverBot
 			}
 		}
 
-		private static bool LoadHistory(string symbol, int count, out List<Candle> history)
+		private static async Task<bool> LoadHistory(string symbol, int count)
 		{
-			history = new List<Candle>();
-
+			List<Candle> history = new List<Candle>();
+			
 			try
 			{
 				BinanceClient client = new BinanceClient();
-
-				var responce = client.FuturesUsdt.Market.GetKlines(symbol, KlineInterval.OneMinute, limit: count);
+		
+				var responce = await client.FuturesUsdt.Market.GetKlinesAsync(symbol, KlineInterval.OneMinute, limit: count);
 				
 				if(responce.Success)
 				{
@@ -679,20 +676,22 @@ namespace RoverBot
 							history.Add(new Candle(record.CloseTime.ToLocalTime(), record.Open, record.Close, record.Low, record.High));
 						}
 					}
-					
+
+					History = history;
+
 					return true;
 				}
 				else
 				{
 					Logger.Write("LoadHistory: " + responce.Error.Message);
-
+		
 					return false;
 				}
 			}
 			catch(Exception exception)
 			{
 				Logger.Write("LoadHistory: " + exception.Message);
-
+		
 				return false;
 			}
 		}
