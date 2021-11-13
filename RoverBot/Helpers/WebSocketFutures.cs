@@ -665,11 +665,11 @@ namespace RoverBot
 			{
 				BinanceClient client = new BinanceClient();
 		
-				var responce = await client.FuturesUsdt.Market.GetKlinesAsync(symbol, KlineInterval.OneMinute, limit: count);
+				var response = await client.FuturesUsdt.Market.GetKlinesAsync(symbol, KlineInterval.OneMinute, limit: count);
 				
-				if(responce.Success)
+				if(response.Success)
 				{
-					foreach(var record in responce.Data)
+					foreach(var record in response.Data)
 					{
 						if(record.CloseTime.ToLocalTime() < LastKlineUpdated)
 						{
@@ -683,7 +683,7 @@ namespace RoverBot
 				}
 				else
 				{
-					Logger.Write("LoadHistory: " + responce.Error.Message);
+					Logger.Write("LoadHistory: " + response.Error.Message);
 		
 					return false;
 				}

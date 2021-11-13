@@ -217,33 +217,6 @@
 		}
 
 		#endregion
-
-		#region MaxLeverage
-
-		private static object LockMaxLeverage = new object();
-
-		private static int maxLeverage = default;
-
-		public static int MaxLeverage
-		{
-			get
-			{
-				lock(LockMaxLeverage)
-				{
-					return maxLeverage;
-				}
-			}
-
-			private set
-			{
-				lock(LockMaxLeverage)
-				{
-					maxLeverage = value;
-				}
-			}
-		}
-
-		#endregion
 		
 		#region IsTrading
 

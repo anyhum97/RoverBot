@@ -1,15 +1,18 @@
 ﻿using System;
-using System.Linq;
 using System.Threading;
 
 namespace RoverBot
 {
 	public class Program
 	{
+		public const string CheckLine = "******************************************************************************";
+
 		public static void Main()
 		{
 			try
 			{
+				Logger.Write(CheckLine);
+
 				BinanceFutures.StartRoverBotAsync().Wait();
 
 				while(BinanceFutures.IsValid())
