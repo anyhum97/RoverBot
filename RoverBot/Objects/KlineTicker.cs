@@ -35,6 +35,22 @@ namespace RoverBot
 			}
 		}
 
+		public bool GetPrice(out decimal price)
+		{
+			price = default;
+
+			try
+			{
+				return decimal.TryParse(Kline.ClosePrice, out price);
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("KlineTicker.GetPrice: " + exception.Message);
+
+				return false;
+			}
+		}
+
 		private static bool DateTimeFromTimeStamp(long timestamp, out DateTime time)
 		{
 			time = default;

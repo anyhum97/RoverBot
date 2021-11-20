@@ -151,6 +151,43 @@ namespace RoverBot
 
 		#endregion
 
+		#region CurrentPrice
+
+		private static object LockCurrentPrice = new object();
+
+		private static decimal currentPrice = default;
+
+		public static decimal CurrentPrice
+		{
+			get
+			{
+				lock(LockCurrentPrice)
+				{
+					return currentPrice;
+				}
+			}
+
+			set
+			{
+				if(value != currentPrice)
+				{
+					lock(LockCurrentPrice)
+					{
+						currentPrice = value;
+					}
+
+					if(value > 0.0m)
+					{
+						PriceUpdationTime = DateTime.Now;
+					}
+				}
+			}
+		}
+
+		public static DateTime PriceUpdationTime;
+
+		#endregion
+
 		#region CloseAction
 
 		private static object LockCloseAction = new object();
@@ -363,6 +400,11 @@ namespace RoverBot
 				string str = e.Data;
 
 				KlineTickerStream record = JsonSerializer.Deserialize<KlineTickerStream>(str);
+
+				if(record.Data.GetPrice(out decimal price))
+				{
+					CurrentPrice = price;
+				}
 
 				if(record.Data.GetTime(out DateTime time))
 				{
