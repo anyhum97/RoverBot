@@ -480,11 +480,15 @@ namespace RoverBot
 			{
 				bool state = true;
 
-				decimal deviation = default;
+				decimal deviation1 = default;
+
+				decimal deviation2 = default;
 
 				decimal quota = default;
 
-				state = state && GetDeviationFactor(History, 140, out deviation);
+				state = state && GetDeviationFactor(History, 140, true, out deviation1);
+
+				state = state && GetDeviationFactor(History, 140, false, out deviation2);
 
 				state = state && GetQuota(History, 30, out quota);
 				
@@ -492,10 +496,10 @@ namespace RoverBot
 				{
 					Task.Run(() =>
 					{
-						WriteRecord(deviation, quota);
+						WriteRecord(deviation2, quota);
 					});
 
-					if(deviation >= 1.9m)
+					if(deviation2 >= 1.9m)
 					{
 						if(quota >= 0.996m)
 						{
@@ -506,6 +510,8 @@ namespace RoverBot
 								decimal takeProfit = Percent * price;
 
 								BinanceFutures.OnEntryPointDetected(price, takeProfit);
+
+								return;
 							});
 						}
 						else
@@ -516,6 +522,11 @@ namespace RoverBot
 					else
 					{
 						Console.WriteLine("Skip");
+					}
+
+					if(deviation1 >= 1.9m)
+					{
+
 					}
 				}
 				else
@@ -564,13 +575,18 @@ namespace RoverBot
 			}
 		}
 
-		private static bool GetAverage(List<Candle> history, int window, out decimal average)
+		private static bool GetAverage(List<Candle> history, int window, bool type, out decimal average)
 		{
 			average = default;
 
 			try
 			{
 				int index = history.Count-3;
+
+				if(type)
+				{
+					++index;
+				}
 
 				for(int i=index-window+1; i<index; ++i)
 				{
@@ -591,7 +607,7 @@ namespace RoverBot
 			}
 		}
 
-		private static bool GetDeviation(List<Candle> history, int window, out decimal average, out decimal deviation)
+		private static bool GetDeviation(List<Candle> history, int window, bool type, out decimal average, out decimal deviation)
 		{
 			average = default;
 
@@ -601,7 +617,12 @@ namespace RoverBot
 			{
 				int index = history.Count-3;
 
-				if(GetAverage(history, window, out average) == false)
+				if(type)
+				{
+					++index;
+				}
+
+				if(GetAverage(history, window, type, out average) == false)
 				{
 					return false;
 				}
@@ -627,7 +648,7 @@ namespace RoverBot
 			}
 		}
 
-		private static bool GetDeviationFactor(List<Candle> history, int window, out decimal factor)
+		private static bool GetDeviationFactor(List<Candle> history, int window, bool type, out decimal factor)
 		{
 			factor = default;
 
@@ -635,12 +656,22 @@ namespace RoverBot
 			{
 				int index = history.Count-3;
 
-				if(GetDeviation(history, window, out decimal average, out decimal deviation) == false)
+				if(type)
+				{
+					++index;
+				}
+
+				if(GetDeviation(history, window, type, out decimal average, out decimal deviation) == false)
 				{
 					return false;
 				}
 
 				decimal delta = average - history[index].Close;
+
+				if(type)
+				{
+					delta = average - history[index-1].Close;
+				}
 
 				factor = delta / deviation;
 
