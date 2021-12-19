@@ -28,17 +28,46 @@ namespace RoverBot
 		
 		public const decimal Percent = 1.013m;
 
-		private static object LockRecordFile = new object();
+		private static object LockRecordsFile = new object();
 
 		private static WebSocket KlineStream = default;
 
 		private static Timer InternalTimer = default;
+		
+		#region Buffer
+
+		private static object LockBuffer = new object();
+
+		private static List<decimal> buffer = default;
+
+		private static DateTime BufferUpdationTime = default;
+
+		public static List<decimal> Buffer
+		{
+			get
+			{
+				lock(LockBuffer)
+				{
+					return buffer;
+				}
+			}
+
+			set
+			{
+				lock(LockBuffer)
+				{
+					buffer = value;
+
+					BufferUpdationTime = DateTime.Now;
+				}
+			}
+		}
+
+		#endregion
 
 		#region History
 
 		private static object LockHistory = new object();
-
-		public static event Action HistoryUpdated = default;
 
 		private static List<Candle> history = default;
 
@@ -61,7 +90,7 @@ namespace RoverBot
 
 				if(CheckHistory())
 				{
-					NotifyPropertyChanged(HistoryUpdated);
+					Buffer = new List<decimal>(value.Select(x => x.Close));
 				}
 			}
 		}
@@ -69,7 +98,40 @@ namespace RoverBot
 		public const int HistoryCount = 180;
 
 		#endregion
-		
+
+		#region CurrentPrice
+
+		private static object LockCurrentPrice = new object();
+
+		private static decimal currentPrice = default;
+
+		public static decimal CurrentPrice
+		{
+			get
+			{
+				lock(LockCurrentPrice)
+				{
+					return currentPrice;
+				}
+			}
+
+			private set
+			{
+				lock(LockCurrentPrice)
+				{
+					if(value != currentPrice)
+					{
+						if(value > 0.0m)
+						{
+							currentPrice = value;
+						}
+					}
+				}
+			}
+		}
+
+		#endregion
+
 		#region LastKlineUpdated
 
 		private static object LockLastKlineUpdated = new object();
@@ -219,9 +281,9 @@ namespace RoverBot
 		{
 			try
 			{
-				HistoryUpdated += CheckEntryPoint;
-
 				StartInternalTimer();
+
+				UpdateRecords();
 			}
 			catch(Exception exception)
 			{
@@ -368,8 +430,27 @@ namespace RoverBot
 				{
 					if(time != LastKlineUpdated)
 					{
-						LastKlineUpdated = time;
+						if(Buffer != default)
+						{
+							const double BufferExpirationTime = 60.0;
 
+							if(BufferUpdationTime.AddSeconds(BufferExpirationTime) >= DateTime.Now)
+							{
+								if(CurrentPrice > 0.0m)
+								{
+									Buffer.Add(CurrentPrice);
+
+									CheckEntryPoint(LastKlineUpdated, Buffer);
+								}
+							}
+							else
+							{
+								Logger.Write("Buffer Expired");
+							}
+						}
+
+						LastKlineUpdated = time;
+						
 						Task.Run(() =>
 						{
 							Thread.Sleep(4000);
@@ -379,6 +460,11 @@ namespace RoverBot
 							LoadHistory(Symbol, HistoryCount).Wait();
 						});
 					}
+				}
+
+				if(record.Data.GetPrice(out decimal price))
+				{
+					CurrentPrice = price;
 				}
 			}
 			catch(Exception exception)
@@ -431,8 +517,8 @@ namespace RoverBot
 				Logger.Write("CheckKlineStream: " + exception.Message);
 			}
 		}
-
-		private static void CheckEntryPoint()
+		
+		private static void CheckEntryPoint(DateTime time, List<decimal> list)
 		{
 			try
 			{
@@ -442,38 +528,30 @@ namespace RoverBot
 
 				decimal quota = default;
 
-				state = state && GetDeviationFactor(History, 140, out deviation);
+				state = state && GetDeviationFactor(list, 140, out deviation);
 
-				state = state && GetQuota(History, 30, out quota);
+				state = state && GetQuota(list, 30, out quota);
 				
 				if(state)
 				{
 					Task.Run(() =>
 					{
-						WriteRecord(deviation, quota);
+						WriteRecords(time, deviation, quota);
 					});
-
+					
 					if(deviation >= 1.9m)
 					{
 						if(quota >= 0.996m)
 						{
+							decimal price = list.Last();
+
+							decimal takeProfit = Percent * price;
+
 							Task.Run(() =>
 							{
-								decimal price = History.Last().Close;
-
-								decimal takeProfit = Percent * price;
-
 								BinanceFutures.OnEntryPointDetected(price, takeProfit);
 							});
 						}
-						else
-						{
-							Console.WriteLine("Skip");
-						}
-					}
-					else
-					{
-						Console.WriteLine("Skip");
 					}
 				}
 				else
@@ -487,42 +565,54 @@ namespace RoverBot
 			}
 		}
 
-		private static void WriteRecord(decimal deviation, decimal quota)
+		private static void WriteRecords(DateTime time, decimal deviation, decimal quota)
 		{
 			try
 			{
 				StringBuilder stringBuilder = new StringBuilder();
-				
-				TimeSpan timeSpan = StopUpdationTime - StartUpdationTime;
 
-				string time = History.Last().CloseTime.ToString("dd.MM.yyyy HH:mm");
+				string str = time.ToString("dd.MM.yyyy HH:mm");
 
-				string updationTime = string.Format("[{0}]", Format(timeSpan.TotalSeconds, 4));
-
-				stringBuilder.Append(time);
+				stringBuilder.Append(str);
 				stringBuilder.Append("\t");
 				
 				stringBuilder.Append(Format(deviation, 4));
 				stringBuilder.Append("\t");
 				
 				stringBuilder.Append(Format(quota, 4));
-				stringBuilder.Append("\t");
-				
-				stringBuilder.Append(updationTime);
 				stringBuilder.Append("\n");
 
-				lock(LockRecordFile)
+				lock(LockRecordsFile)
 				{
-					File.AppendAllText("Records.txt", stringBuilder.ToString());
+					const string path = "Records.txt";
+
+					File.AppendAllText(path, stringBuilder.ToString());
 				}
 			}
 			catch(Exception exception)
 			{
-				Logger.Write("WriteRecord: " + exception.Message);
+				Logger.Write("WriteRecords: " + exception.Message);
 			}
 		}
 
-		private static bool GetAverage(List<Candle> history, int window, out decimal average)
+		private static void UpdateRecords()
+		{
+			try
+			{
+				const string path = "Records.txt";
+
+				if(File.Exists(path) == false)
+				{
+					File.AppendAllText(path, "");
+				}
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("UpdateRecords: " + exception.Message);
+			}
+		}
+
+		private static bool GetAverage(List<decimal> history, int window, out decimal average)
 		{
 			average = default;
 
@@ -532,7 +622,7 @@ namespace RoverBot
 
 				for(int i=index-window+1; i<index; ++i)
 				{
-					decimal price = history[i].Close;
+					decimal price = history[i];
 
 					average += price;
 				}
@@ -549,7 +639,7 @@ namespace RoverBot
 			}
 		}
 
-		private static bool GetDeviation(List<Candle> history, int window, out decimal average, out decimal deviation)
+		private static bool GetDeviation(List<decimal> history, int window, out decimal average, out decimal deviation)
 		{
 			average = default;
 
@@ -568,7 +658,7 @@ namespace RoverBot
 
 				for(int i=index-window+1; i<index; ++i)
 				{
-					decimal price = history[i].Close;
+					decimal price = history[i];
 
 					deviation += (price - average) * (price - average);
 				}
@@ -585,7 +675,7 @@ namespace RoverBot
 			}
 		}
 
-		private static bool GetDeviationFactor(List<Candle> history, int window, out decimal factor)
+		private static bool GetDeviationFactor(List<decimal> history, int window, out decimal factor)
 		{
 			factor = default;
 
@@ -598,7 +688,7 @@ namespace RoverBot
 					return false;
 				}
 
-				decimal delta = average - history[index].Close;
+				decimal delta = average - history[index];
 
 				factor = delta / deviation;
 
@@ -612,7 +702,7 @@ namespace RoverBot
 			}
 		}
 
-		private static bool GetQuota(List<Candle> history, int window, out decimal quota)
+		private static bool GetQuota(List<decimal> history, int window, out decimal quota)
 		{
 			quota = default;
 
@@ -624,11 +714,11 @@ namespace RoverBot
 
 				int index = history.Count-1;
 
-				decimal price2 = history[index].Close;
+				decimal price2 = history[index];
 
 				for(int i=index-window+1; i<index; ++i)
 				{
-					decimal price1 = history[i].Close;
+					decimal price1 = history[i];
 
 					decimal delta = Math.Abs(price1 - price2);
 
@@ -663,35 +753,40 @@ namespace RoverBot
 			
 			try
 			{
-				BinanceClient client = new BinanceClient();
-		
-				var response = await client.FuturesUsdt.Market.GetKlinesAsync(symbol, KlineInterval.OneMinute, limit: count);
-				
-				if(response.Success)
+				const int attempts = 2;
+
+				for(int i=default; i<attempts; ++i)
 				{
-					foreach(var record in response.Data)
+					BinanceClient client = new BinanceClient();
+					
+					var response = await client.FuturesUsdt.Market.GetKlinesAsync(symbol, KlineInterval.OneMinute, limit: count);
+					
+					if(response.Success)
 					{
-						if(record.CloseTime.ToLocalTime() < LastKlineUpdated)
+						foreach(var record in response.Data)
 						{
-							history.Add(new Candle(record.CloseTime.ToLocalTime(), record.Open, record.Close, record.Low, record.High));
+							if(record.CloseTime.ToLocalTime() < LastKlineUpdated)
+							{
+								history.Add(new Candle(record.CloseTime.ToLocalTime(), record.Open, record.Close, record.Low, record.High));
+							}
 						}
+
+						History = history;
+
+						return true;
 					}
-
-					History = history;
-
-					return true;
+					else
+					{
+						Logger.Write("LoadHistory: " + response.Error.Message);
+					}
 				}
-				else
-				{
-					Logger.Write("LoadHistory: " + response.Error.Message);
-		
-					return false;
-				}
+
+				return false;
 			}
 			catch(Exception exception)
 			{
 				Logger.Write("LoadHistory: " + exception.Message);
-		
+				
 				return false;
 			}
 		}
@@ -750,21 +845,6 @@ namespace RoverBot
 				Logger.Write("CheckHistory: " + exception.Message);
 
 				return false;
-			}
-		}
-
-		private static void NotifyPropertyChanged(Action eventHandler)
-		{
-			try
-			{
-				if(eventHandler != null)
-				{
-					eventHandler.Invoke();
-				}
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("NotifyPropertyChanged: " + exception.Message);
 			}
 		}
 

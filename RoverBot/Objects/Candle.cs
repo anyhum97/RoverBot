@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Text;
-using System.IO;
 
 namespace RoverBot
 {
@@ -32,34 +29,6 @@ namespace RoverBot
 			}
 		}
 
-		public static bool WriteList(string path, List<Candle> history)
-		{
-			try
-			{
-				StringBuilder stringBuilder = new StringBuilder();
-				
-				for(int i=default; i<history.Count; ++i)
-				{
-					stringBuilder.Append(history[i].Format());
-
-					if(i < history.Count - 1)
-					{
-						stringBuilder.Append("\n");
-					}
-				}
-				
-				File.WriteAllText(path, stringBuilder.ToString());
-
-				return true;
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("Candle.WriteList: " + exception.Message);
-
-				return false;
-			}
-		}
-
 		public override string ToString()
 		{
 			try
@@ -69,20 +38,6 @@ namespace RoverBot
 			catch(Exception exception)
 			{
 				Logger.Write("Candle.ToString: " + exception.Message);
-
-				return "Invalid Format";
-			}
-		}
-
-		private string Format()
-		{
-			try
-			{
-				return string.Format(CultureInfo.InvariantCulture, "{0:dd.MM.yyyy HH:mm}\t{1:F2}", CloseTime, Close);
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("Candle.Format: " + exception.Message);
 
 				return "Invalid Format";
 			}

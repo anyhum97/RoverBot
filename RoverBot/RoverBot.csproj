@@ -203,8 +203,6 @@
     <Compile Include="Helpers\Logger.cs" />
     <Compile Include="BinanceFutures.cs" />
     <Compile Include="Helpers\WebSocketFutures.cs" />
-    <Compile Include="Objects\BookTicker.cs" />
-    <Compile Include="Objects\BookTickerStream.cs" />
     <Compile Include="Objects\Candle.cs" />
     <Compile Include="Objects\Kline.cs" />
     <Compile Include="Objects\KlineTicker.cs" />

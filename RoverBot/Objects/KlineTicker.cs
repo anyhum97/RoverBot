@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text.Json.Serialization;
+using System.Globalization;
 
 namespace RoverBot
 {
@@ -19,6 +20,24 @@ namespace RoverBot
 
 		private static readonly DateTime Epoch = new DateTime(1970, 1, 1);
 
+		private static bool DateTimeFromTimeStamp(long timestamp, out DateTime time)
+		{
+			time = default;
+
+			try
+			{
+				time = Epoch.AddMilliseconds(timestamp).ToLocalTime();
+
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("KlineTicker.DateTimeFromTimeStamp: " + exception.Message);
+
+				return false;
+			}
+		}
+
 		public bool GetTime(out DateTime time)
 		{
 			time = default;
@@ -35,19 +54,17 @@ namespace RoverBot
 			}
 		}
 
-		private static bool DateTimeFromTimeStamp(long timestamp, out DateTime time)
+		public bool GetPrice(out decimal price)
 		{
-			time = default;
+			price = default;
 
 			try
 			{
-				time = Epoch.AddMilliseconds(timestamp).ToLocalTime();
-
-				return true;
+				return decimal.TryParse(Kline.ClosePrice, NumberStyles.Number, CultureInfo.InvariantCulture, out price);
 			}
 			catch(Exception exception)
 			{
-				Logger.Write("KlineTicker.DateTimeFromTimeStamp: " + exception.Message);
+				Logger.Write("KlineTicker.GetPrice: " + exception.Message);
 
 				return false;
 			}
