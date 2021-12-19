@@ -1,32 +1,30 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.Threading.Tasks;
+using System.Diagnostics;
 using System.Threading;
 using System.Linq;
+using System.IO;
 
 using Binance.Net;
 using Binance.Net.Enums;
 using Binance.Net.Objects.Futures.FuturesData;
-using Binance.Net.Objects.Futures.MarketData;
 
 using Timer = System.Timers.Timer;
 
 namespace RoverBot
 {
-	public static class BinanceFutures
+	public static partial class BinanceFutures
 	{
-		public const string CheckLine = "******************************************************************************";
+		public const string ApiKey = "2SZQJS9YCll34RsYJ0S8BtUqXwtL8CrG6cFzM5A4iXa2toaLxjAr3vn8r44sFPM5";
 
-		public const string ApiKey = "LF6LgLNhFZcMPRkasacEsmc7fQJ4qRydCVakhf99V76IIH4cMER1QNTSLHa2aPqt";
-
-		public const string SecretKey = "7OMVQjWx7IVqmQ33Uuc01o4X8DNMUdUO22EwkGj0q70KVjjr2xV45WivqaTYohDq";
+		public const string SecretKey = "NFxPBdmA0KrlvbX3Sk2BgYWenjAEZ3zgwxeEOG0e6NWtHHzxsQdgPdZDOMSFjrQ7";
 
 		public const string Currency1 = "USDT";
 
 		public const string Currency2 = "BTC";
 
-		public const string Version = "0.887";
+		public const string Version = "0.979";
 
 		public static string Symbol = Currency2 + Currency1;
 
@@ -34,35 +32,13 @@ namespace RoverBot
 
 		public const decimal VolumeFilter = 0.001m;
 
+		public const decimal Border = 10.0m;
+
 		public const int DefaultLeverage = 6;
 
 		public const int PricePrecision = 2;
 
 		public const int VolumePrecision = 3;
-
-		public static decimal LastBalance { get; private set; } = default;
-
-		public static decimal Balance { get; private set; } = default;
-
-		public static decimal TotalBalance { get; private set; } = default;
-
-		public static decimal Frozen { get; private set; } = default;
-
-		public static decimal FeePrice { get; private set; } = default;
-
-		public static decimal FeeBalance { get; private set; } = default;
-
-		public static decimal FeeCoins { get; private set; } = default;
-
-		public static int CurrentLeverage { get; private set; } = default;
-
-		public static int MaxLeverage { get; private set; } = default;
-
-		public static bool InPosition { get; set; } = false;
-
-		public static bool State { get; private set; } = false;
-
-		public static bool IsTrading { get; set; } = false;
 
 		private static BinanceClient Client = default;
 
@@ -70,64 +46,16 @@ namespace RoverBot
 
 		private static Timer InternalTimer2 = default;
 
-		static BinanceFutures()
-		{
-			try
-			{
-				Logger.Write(CheckLine);
-
-				Logger.Write("FuturesBot Version " + Version + " Started");
-
-				Client = new BinanceClient();
-				
-				Client.SetApiCredentials(ApiKey, SecretKey);
-				
-				WebSocketFutures.StartPriceStream();
-				
-				WebSocketFutures.StartKlineStream();
-
-				TelegramBot.Start();
-				
-				while(IsTrading == false)
-				{
-					if(CheckPosition(Symbol))
-					{
-						break;
-					}
-					
-					Thread.Sleep(1000);
-				}
-				
-				State = true;
-				
-				UpdateBalance();
-				
-				SetTradeParams();
-
-				StartInternalTimer1();
-
-				StartInternalTimer2();
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("BinanceFutures: " + exception.Message);
-
-				Client = default;
-
-				State = default;
-			}
-		}
-
 		public static bool IsValid()
 		{
 			try
 			{
-				if(State == false)
+				if(State == default)
 				{
 					return false;
 				}
 
-				if(Client == null)
+				if(Client == default)
 				{
 					return false;
 				}
@@ -142,13 +70,44 @@ namespace RoverBot
 			}
 		}
 		
+		public static void RestartRoverBot()
+		{
+			try
+			{
+				const string FileName = "RestartRoverBot.exe";
+
+				if(File.Exists(FileName))
+				{
+					Logger.Write("RoverBot: Restarting...");
+
+					Process process = new Process();
+
+					process.StartInfo.FileName = FileName;
+
+					process.StartInfo.WorkingDirectory = Directory.GetCurrentDirectory();
+
+					process.StartInfo.UseShellExecute = false;
+
+					process.Start();
+				}
+				else
+				{
+					Logger.Write("RestartRoverBot: Invalid File");
+				}
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("RestartRoverBot: " + exception.Message);
+			}
+		}
+
 		private static void StartInternalTimer1()
 		{
 			try
 			{
 				InternalTimer1 = new Timer();
 
-				InternalTimer1.Interval = 20000;
+				InternalTimer1.Interval = 30000;
 
 				InternalTimer1.Elapsed += InternalTimerElapsed1;
 
@@ -166,7 +125,7 @@ namespace RoverBot
 			{
 				InternalTimer2 = new Timer();
 
-				InternalTimer2.Interval = 600000;
+				InternalTimer2.Interval = 1800000;
 
 				InternalTimer2.Elapsed += InternalTimerElapsed2;
 
@@ -184,9 +143,9 @@ namespace RoverBot
 			{
 				Task.Run(() =>
 				{
-					CheckPosition(Symbol);
+					CheckPositionAsync(Symbol).Wait();
 
-					UpdateBalance();
+					UpdateBalanceAsync().Wait();
 				});
 			}
 			catch(Exception exception)
@@ -210,7 +169,7 @@ namespace RoverBot
 			}
 		}
 
-		public static void OnEntryPointDetected(decimal takeProfit)
+		public static void OnEntryPointDetected(decimal price, decimal takeProfit)
 		{
 			try
 			{
@@ -222,9 +181,7 @@ namespace RoverBot
 						{
 							if(CurrentLeverage == DefaultLeverage)
 							{
-								decimal price = WebSocketFutures.CurrentPrice;
-
-								const decimal depositFactor = 0.98m;
+								const decimal depositFactor = 0.99m;
 
 								decimal deposit = depositFactor * Balance;
 
@@ -232,49 +189,120 @@ namespace RoverBot
 
 								decimal volume = deals * VolumeFilter;
 
-								PlaceLongOrder(Symbol, volume, takeProfit);
+								Logger.Write("OnEntryPointDetected: [Entry Point]");
 
-								CheckPosition(Symbol);
+								Logger.Write(Program.CheckLine);
 
-								UpdateBalance();
+								PlaceLongOrderAsync(Symbol, volume, price, takeProfit).Wait();
+
+								Logger.Write(Program.CheckLine);
+
+								CheckPositionAsync(Symbol).Wait();
+
+								UpdateBalanceAsync().Wait();
 							}
 							else
 							{
-								TelegramBot.Send("Установлено неверное плечо (" + CurrentLeverage + ")");
-
-								Logger.Write("Invalid Leverage");
+								Logger.Write("OnEntryPointDetected: Invalid Leverage");
 							}
 						}
 						else
 						{
-							Logger.Write("Already InPosition");
+							Logger.Write("OnEntryPointDetected: Already In Position");
 						}
 					}
 					else
 					{
-						Logger.Write("EntryPoint");
+						Logger.Write("OnEntryPointDetected: [Entry Point]");
 					}
 				}
 				else
 				{
-					Logger.Write("EntryPoint");
+					Logger.Write("OnEntryPointDetected: [Entry Point]");
 				}
 			}
 			catch(Exception exception)
 			{
-				Logger.Write("OnLongEntryPointDetected: " + exception.Message);
+				Logger.Write("OnEntryPointDetected: " + exception.Message);
 			}
 		}
 
-		private static bool PlaceLongOrder(string symbol, decimal volume, decimal takeProfit)
+		private static void SetTradeParams()
+		{
+			try
+			{
+				Task.Run(() =>
+				{
+					SetIsolatedTradingAsync().Wait();
+					
+					SetLeverageAsync(DefaultLeverage).Wait();
+					
+					UpdateBalanceAsync().Wait();
+				});
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("SetTradeParams: " + exception.Message);
+			}
+		}
+		
+		public static async Task<bool> StartRoverBotAsync()
+		{
+			try
+			{
+				Logger.Write(string.Format("RoverBot({0}, {1}) Version {2} Started", Symbol, DefaultLeverage, Version));
+
+				Logger.Write(ApiKey);
+
+				Client = new BinanceClient();
+				
+				Client.SetApiCredentials(ApiKey, SecretKey);
+				
+				WebSocketFutures.StartKlineStream();
+				
+				while(IsTrading == false)
+				{
+					if(await CheckPositionAsync(Symbol))
+					{
+						break;
+					}
+					
+					Thread.Sleep(1000);
+				}
+				
+				State = true;
+				
+				UpdateBalanceAsync().Wait();
+
+				StartInternalTimer1();
+
+				StartInternalTimer2();
+				
+				SetTradeParams();
+
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("BinanceFutures: " + exception.Message);
+
+				Client = default;
+
+				State = default;
+
+				return false;
+			}
+		}
+
+		public static async Task<bool> PlaceLongOrderAsync(string symbol, decimal volume, decimal price, decimal takeProfit1)
 		{
 			try
 			{
 				if(IsValid())
 				{
-					if(WebSocketFutures.CurrentPrice > 0.0m)
+					if(price > 0.0m)
 					{
-						if(symbol == null)
+						if(symbol == default)
 						{
 							return false;
 						}
@@ -286,19 +314,26 @@ namespace RoverBot
 							return false;
 						}
 
-						decimal price = WebSocketFutures.CurrentPrice;
-
-						takeProfit = Math.Round(takeProfit, PricePrecision);
+						takeProfit1 = Math.Round(takeProfit1, PricePrecision);
 						
-						if(takeProfit <= price)
+						if(takeProfit1 <= price)
 						{
 							return false;
 						}
 
-						const decimal border = 10.0m;
+						const decimal percent = 1.01m;
 
-						var orders = new BinanceFuturesBatchOrder[2];
-						
+						decimal takeProfit2 = percent * takeProfit1;
+
+						takeProfit2 = Math.Round(takeProfit2, PricePrecision);
+
+						if(takeProfit2 <= price)
+						{
+							return false;
+						}
+
+						var orders = new BinanceFuturesBatchOrder[3];
+
 						orders[0] = new BinanceFuturesBatchOrder()
 						{
 							Symbol = symbol,
@@ -316,37 +351,61 @@ namespace RoverBot
 							Type = OrderType.TakeProfit,
 							PositionSide = PositionSide.Both,
 							TimeInForce = TimeInForce.GoodTillCancel,
-							StopPrice = takeProfit - border,
-							Price = takeProfit,
+							StopPrice = takeProfit1 - Border,
+							Price = takeProfit1,
 							Quantity = volume,
 							ReduceOnly = true,
 						};
-						
-						var responce = Client.FuturesUsdt.Order.PlaceMultipleOrders(orders);
-						
-						if(responce.Success)
+
+						orders[2] = new BinanceFuturesBatchOrder()
 						{
-							var data = responce.Data.ToArray();
+							Symbol = symbol,
+							Side = OrderSide.Sell,
+							Type = OrderType.TakeProfit,
+							PositionSide = PositionSide.Both,
+							TimeInForce = TimeInForce.GoodTillCancel,
+							StopPrice = takeProfit2 - Border,
+							Price = takeProfit2,
+							Quantity = volume,
+							ReduceOnly = true,
+						};
+
+						var response = await Client.FuturesUsdt.Order.PlaceMultipleOrdersAsync(orders);
+						
+						try
+						{
+							var data = response.Data.ToArray();
 							
-							foreach(var record in data)
+							for(int i=default; i<data.Length; ++i)
 							{
-								if(record.Success == false)
+								if(data[i].Success == false)
 								{
-									Logger.Write("PlaceLongOrder: " + record.Error.Message);
+									Logger.Write(string.Format("PlaceLongOrder[{0}]: {1}", i, data[i].Error.Message));
 								}
 							}
-							
-							Logger.Write("PlaceLongOrder: Success (Price = " + Format(price, PricePrecision) + ")");
+						}
+						catch(Exception exception)
+						{
+							Logger.Write("PlaceLongOrder: " + exception.Message);
+						}
 
-							TelegramBot.Send("Сделка");
+						if(response.Success)
+						{
+							decimal orderPrice = response.Data.First().Data.AvgPrice;
+
+							Logger.Write("PlaceLongOrder: HistoryPrice = " + Format(price, PricePrecision));
+
+							Logger.Write("PlaceLongOrder: OrderPrice = " + Format(orderPrice, PricePrecision));
+
+							Logger.Write("PlaceLongOrder: TakeProfit = " + Format(takeProfit1, PricePrecision));
+
+							Logger.Write("PlaceLongOrder: Volume = " + Format(volume, VolumePrecision));
 
 							return true;
 						}
 						else
 						{
-							Logger.Write("PlaceLongOrder: " + responce.Error.Message);
-							
-							CancelAllOrders(symbol);
+							Logger.Write("PlaceLongOrder: " + response.Error.Message);
 							
 							return false;
 						}
@@ -373,23 +432,23 @@ namespace RoverBot
 			}
 		}
 
-		private static bool CancelAllOrders(string symbol)
+		private static async Task<bool> CancelAllOrdersAsync(string symbol)
 		{
 			try
 			{
 				const int attempts = 3;
 
-				for(int i=0; i<attempts; ++i)
+				for(int i=default; i<attempts; ++i)
 				{
-					var responce = Client.FuturesUsdt.Order.CancelAllOrders(symbol);
+					var response = await Client.FuturesUsdt.Order.CancelAllOrdersAsync(symbol);
 
-					if(responce.Success)
+					if(response.Success)
 					{
 						return true;
 					}
 					else
 					{
-						Logger.Write("CancelAllOrders: " + responce.Error.Message);
+						Logger.Write("CancelAllOrders: " + response.Error.Message);
 					}
 				}
 
@@ -403,46 +462,19 @@ namespace RoverBot
 			}
 		}
 
-		private static bool UpdateFeePrice()
-		{
-			try
-			{
-				var responce = Client.Spot.Market.GetPrice("BNBUSDT");
-
-				if(responce.Success)
-				{
-					FeePrice = responce.Data.Price;
-
-					return true;
-				}
-				else
-				{
-					Logger.Write("UpdateFeePrice: " + responce.Error.Message);
-
-					return false;
-				}
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("UpdateFeePrice: " + exception.Message);
-
-				return false;
-			}
-		}
-
-		private static bool UpdateBalance()
+		private static async Task<bool> UpdateBalanceAsync()
 		{
 			try
 			{
 				if(IsValid())
 				{
-					var responce = Client.FuturesUsdt.Account.GetBalance();
+					var response = await Client.FuturesUsdt.Account.GetBalanceAsync();
 
-					if(responce.Success)
+					if(response.Success)
 					{
-						var list = responce.Data.ToList();
+						var list = response.Data.ToList();
 
-						for(int i=0; i<list.Count; ++i)
+						for(int i=default; i<list.Count; ++i)
 						{
 							if(list[i].Asset == Currency1)
 							{
@@ -453,7 +485,7 @@ namespace RoverBot
 
 								Balance = list[i].CrossWalletBalance;
 
-								TotalBalance = list[i].Balance;
+								TotalBalance = list[i].AvailableBalance;
 
 								Frozen = TotalBalance - Balance;
 
@@ -462,16 +494,14 @@ namespace RoverBot
 
 							if(list[i].Asset == "BNB")
 							{
-								FeeCoins = list[i].Balance;
+								FeeCoins = list[i].AvailableBalance;
 
-								if(FeePrice > 0.0m)
+								if(FeePrice == default)
 								{
-									FeeBalance = FeePrice * FeeCoins;
+									UpdateFeePriceAsync().Wait();
 								}
-								else
-								{
-									UpdateFeePrice();
-								}
+
+								FeeBalance = FeePrice * FeeCoins;
 							}
 						}
 
@@ -479,7 +509,7 @@ namespace RoverBot
 					}
 					else
 					{
-						Logger.Write("UpdateBalance: Bad Request");
+						Logger.Write("UpdateBalance: " + response.Error.Message);
 
 						return false;
 					}
@@ -499,172 +529,54 @@ namespace RoverBot
 			}
 		}
 
-		private static bool GetMaxLeverage()
+		private static async Task<bool> UpdateFeePriceAsync()
 		{
 			try
 			{
-				if(IsValid())
+				var response = await Client.Spot.Market.GetPriceAsync("BNBUSDT");
+
+				if(response.Success)
 				{
-					var result = Client.FuturesUsdt.GetBrackets(Symbol);
+					FeePrice = response.Data.Price;
 
-					if(result.Success)
-					{
-						MaxLeverage = default;
-
-						List<BinanceFuturesSymbolBracket> list = result.Data.ToList();
-
-						foreach(var record in list)
-						{
-							foreach(var bracket in record.Brackets)
-							{
-								if(bracket.InitialLeverage > MaxLeverage)
-								{
-									MaxLeverage = bracket.InitialLeverage;
-								}
-							}
-						}
-
-						return true;
-					}
-					else
-					{
-						Logger.Write("GetMaxLeverage: " + result.Error);
-
-						return false;
-					}
+					return true;
 				}
 				else
 				{
-					Logger.Write("GetMaxLeverage: Invalid Account");
+					Logger.Write("UpdateFeePrice: " + response.Error.Message);
 
 					return false;
 				}
 			}
 			catch(Exception exception)
 			{
-				Logger.Write("GetMaxLeverage: " + exception.Message);
-				
+				Logger.Write("UpdateFeePrice: " + exception.Message);
+
 				return false;
 			}
 		}
 
-		private static bool UpdateMaxLeverage()
+		private static async Task<bool> SetIsolatedTradingAsync()
 		{
 			try
 			{
 				if(IsValid())
 				{
-					if(MaxLeverage > 0)
+					var response = await Client.FuturesUsdt.ChangeMarginTypeAsync(Symbol, FuturesMarginType.Isolated);
+
+					if(response)
 					{
 						return true;
 					}
 					else
 					{
-						bool success = false;
-
-						const int attempts = 3;
-
-						for(int i = 0; i<attempts; ++i)
-						{
-							success = GetMaxLeverage();
-
-							if(success)
-							{
-								break;
-							}
-						}
-
-						return success;
-					}
-				}
-				else
-				{
-					Logger.Write("UpdateMaxLeverage: Invalid Account");
-
-					return false;
-				}
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("UpdateMaxLeverage: " + exception.Message);
-
-				return false;
-			}
-		}
-
-		private static bool SetLeverage(int leverage)
-		{
-			try
-			{
-				if(IsValid())
-				{
-					UpdateMaxLeverage();
-
-					if(leverage < 1 || leverage > MaxLeverage)
-					{
-						Logger.Write("SetLeverage: Invalid Leverage");
-
-						return false;
-					}
-
-					var result = Client.FuturesUsdt.ChangeInitialLeverage(Symbol, leverage);
-
-					if(result.Success)
-					{
-						if(result.Data.Leverage == leverage)
-						{
-							CurrentLeverage = leverage;
-
-							return true;
-						}
-						else
-						{
-							return false;
-						}
-					}
-					else
-					{
-						Logger.Write("SetLeverage: " + result.Error);
-
-						return false;
-					}
-				}
-				else
-				{
-					Logger.Write("SetLeverage: Invalid Account");
-
-					return false;
-				}
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("SetLeverage: " + exception.Message);
-
-				return false;
-			}
-		}
-
-		private static bool SetIsolatedTrading()
-		{
-			try
-			{
-				if(IsValid())
-				{
-					var result = Client.FuturesUsdt.ChangeMarginType(Symbol, FuturesMarginType.Isolated);
-
-					if(result.Success)
-					{
-						return true;
-					}
-					else
-					{
-						if(result.Error.Message.Contains("No need to change margin type"))
+						if(response.Error.Message.Contains("No need to change margin type"))
 						{
 							return true;
 						}
 						else
 						{
-							Logger.Write("SetIsolatedTrading: " + result.Error);
+							Logger.Write("SetIsolatedTrading: " + response.Error.Message);
 
 							return false;
 						}
@@ -684,34 +596,87 @@ namespace RoverBot
 				return false;
 			}
 		}
-		
-		private static bool CheckPosition(string symbol)
+
+		private static async Task<bool> SetLeverageAsync(int leverage)
 		{
 			try
 			{
-				var responce = Client.FuturesUsdt.GetPositionInformation(symbol);
-
-				if(responce.Success)
+				if(IsValid())
 				{
-					IsTrading = true;
+					var response = await Client.FuturesUsdt.ChangeInitialLeverageAsync(Symbol, leverage);
 
-					if(responce.Data.ToList().First().IsolatedMargin == 0.0m)
+					if(response.Success)
 					{
-						if(InPosition)
+						if(response.Data.Leverage == leverage)
 						{
-							UpdateFeePrice();
+							CurrentLeverage = leverage;
 
-							UpdateBalance();
-
-							NotifyUser();
+							return true;
 						}
-						
-						IsTrading = CancelAllOrders(Symbol);
-
-						InPosition = false;
+						else
+						{
+							return false;
+						}
 					}
 					else
 					{
+						Logger.Write("SetLeverage: " + response.Error.Message);
+
+						return false;
+					}
+				}
+				else
+				{
+					Logger.Write("SetLeverage: Invalid Account");
+
+					return false;
+				}
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("SetLeverage: " + exception.Message);
+
+				return false;
+			}
+		}
+		
+		private static async Task<bool> CheckPositionAsync(string symbol)
+		{
+			try
+			{
+				var response = await Client.FuturesUsdt.GetPositionInformationAsync(symbol);
+
+				if(response.Success)
+				{
+					IsTrading = true;
+
+					if(response.Data.ToList().First().IsolatedMargin == default)
+					{
+						if(InPosition)
+						{
+							UpdateFeePriceAsync().Wait();
+
+							UpdateBalanceAsync().Wait();
+
+							Logger.Write(Program.CheckLine);
+
+							Logger.Write("CheckPosition: Position Closed, Balance = " + Format(Balance, PricePrecision));
+
+							Logger.Write(Program.CheckLine);
+						}
+						
+						IsTrading = await CancelAllOrdersAsync(Symbol);
+
+						InPosition = default;
+					}
+					else
+					{
+						decimal entry = response.Data.First().EntryPrice;
+
+						decimal volume = response.Data.First().Quantity;
+
+						CheckOrders(entry, volume).Wait();
+
 						InPosition = true;
 					}
 
@@ -719,9 +684,9 @@ namespace RoverBot
 				}
 				else
 				{
-					IsTrading = false;
+					IsTrading = default;
 
-					Logger.Write("CheckPosition: " + responce.Error.Message);
+					Logger.Write("CheckPosition: " + response.Error.Message);
 
 					return false;
 				}
@@ -733,56 +698,103 @@ namespace RoverBot
 				return false;
 			}
 		}
-		
-		private static bool NotifyUser()
+
+		private static async Task<bool> CheckOrders(decimal entry, decimal volume)
 		{
 			try
 			{
-				if(TotalBalance > LastBalance)
+				var orders = await Client.FuturesUsdt.Order.GetOpenOrdersAsync(Symbol);
+
+				int count = orders.Data.Count();
+
+				if(count == default)
 				{
-					TelegramBot.Send("Сделка прошла успешно");
+					decimal price = WebSocketFutures.History.Last().Close;
+
+					decimal profit = WebSocketFutures.Percent * entry;
+
+					profit = Math.Round(profit, PricePrecision);
+
+					if(price < profit)
+					{
+						if(await PlaceEmergencyOrder1(profit, volume) == false)
+						{
+							PlaceEmergencyOrder2(volume).Wait();
+						}
+					}
+					else
+					{
+						PlaceEmergencyOrder2(volume).Wait();
+					}
 				}
-
-				if(TotalBalance < LastBalance)
+				else
 				{
-					TelegramBot.Send("Сделка провалена");
-				}
-
-				const decimal feeFactor = 0.00036m + 0.00036m;
-
-				decimal necessary = feeFactor * TotalBalance;
-
-				if(FeeBalance < necessary)
-				{
-					TelegramBot.Send("Малый остаток BNB монет");
+					Logger.Write(string.Format("CheckOrders({0}): [OK]", count));
 				}
 
 				return true;
 			}
 			catch(Exception exception)
 			{
-				Logger.Write("NotifyUser: " + exception.Message);
+				Logger.Write("CheckOrders: " + exception.Message);
 
 				return false;
 			}
 		}
 
-		private static void SetTradeParams()
+		private static async Task<bool> PlaceEmergencyOrder1(decimal profit, decimal volume)
 		{
 			try
 			{
-				Task.Run(() =>
+				profit = Math.Round(profit, PricePrecision);
+
+				var response = await Client.FuturesUsdt.Order.PlaceOrderAsync(Symbol, OrderSide.Sell, OrderType.TakeProfit, volume, PositionSide.Both, TimeInForce.GoodTillCancel, true, profit, stopPrice: profit - Border);
+
+				if(response.Success)
 				{
-					SetIsolatedTrading();
-					
-					SetLeverage(DefaultLeverage);
-					
-					UpdateBalance();
-				});
+					Logger.Write("SetEmergencyOrder1: Success");
+
+					return true;
+				}
+				else
+				{
+					Logger.Write("SetEmergencyOrder1: " + response.Error.Message);
+
+					return false;
+				}
 			}
 			catch(Exception exception)
 			{
-				Logger.Write("SetTradeParams: " + exception.Message);
+				Logger.Write("SetEmergencyOrder1: " + exception.Message);
+
+				return false;
+			}
+		}
+
+		private static async Task<bool> PlaceEmergencyOrder2(decimal volume)
+		{
+			try
+			{
+				var response = await Client.FuturesUsdt.Order.PlaceOrderAsync(Symbol, OrderSide.Sell, OrderType.Market, volume, PositionSide.Both, reduceOnly: true);
+
+				if(response.Success)
+				{
+					Logger.Write("SetEmergencyOrder2: Success");
+
+					return true;
+				}
+				else
+				{
+					Logger.Write("SetEmergencyOrder2: " + response.Error.Message);
+
+					return false;
+				}
+			}
+			catch(Exception exception)
+			{
+				Logger.Write("SetEmergencyOrder2: " + exception.Message);
+
+				return false;
 			}
 		}
 

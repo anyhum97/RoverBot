@@ -1,7 +1,5 @@
 ﻿using System.Text.Json.Serialization;
 
-using RoverBot;
-
 namespace RoverBot
 {
 	public class KlineTickerStream
