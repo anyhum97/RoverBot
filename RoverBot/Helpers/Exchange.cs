@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 
 using OKX.Api;
 
@@ -40,7 +41,17 @@ namespace RoverBot
 
 				if(task.Result.Success)
 				{
-					
+					var data = task.Result?.Data?.Details?.FirstOrDefault(x => x.Currency == "USDT");
+
+					if(data?.AvailableBalance.HasValue == default)
+					{
+						Logger.Write("GetBalance: Invalid Response");
+
+						return false;
+					}
+
+					balance = data.AvailableBalance.Value;
+
 					return true;
 				}
 				

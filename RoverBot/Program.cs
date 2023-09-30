@@ -7,7 +7,7 @@ namespace RoverBot
 	{
 		public const string CheckLine = "******************************************************************************";
 
-		public const string Version = "2.05";
+		public const string Version = "2.06";
 		
 		public const string ApiKey = "0c3d85cc-bdf9-4e69-b8f2-ecf24493ccd6";
 
