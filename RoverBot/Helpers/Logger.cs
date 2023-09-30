@@ -1,32 +1,15 @@
 ﻿using System;
 using System.IO;
-using System.Threading.Tasks;
 
 namespace RoverBot
 {
 	public static class Logger
 	{
-		private const string LogFileName = "RoverBot.txt";
-		
-		public static readonly string LogFilePath;
+		private const string LogFilePath = "RoverBot.txt";
 
 		private static readonly object LockFile = new object();
 
 		public static bool IsConsoleEnabled { get; set; } = true;
-
-		static Logger()
-		{
-			try
-			{
-				string directory = AppDomain.CurrentDomain.BaseDirectory;
-
-				LogFilePath = string.Concat(directory, LogFileName);
-			}
-			catch
-			{
-				LogFilePath = LogFileName;
-			}
-		}
 
 		public static void Write(string str)
 		{
@@ -60,26 +43,23 @@ namespace RoverBot
 				{
 					Console.Write(record);
 				}
-				catch
+				finally
 				{
 
 				}
 			}
 
-			Task.Run(() =>
+			try
 			{
-				try
+				lock(LockFile)
 				{
-					lock(LockFile)
-					{
-						File.AppendAllText(LogFilePath, record);
-					}
+					File.AppendAllText(LogFilePath, record);
 				}
-				catch
-				{
-					
-				}
-			});
+			}
+			finally
+			{
+				
+			}
 		}
 	}
 }
