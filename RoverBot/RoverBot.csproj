@@ -89,11 +89,15 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Helpers\BalanceHandler.cs" />
+    <Compile Include="Handlers\BalanceHandler.cs" />
     <Compile Include="Helpers\Exchange.cs" />
+    <Compile Include="Handlers\PriceHandler.cs" />
     <Compile Include="Helpers\Logger.cs" />
     <Compile Include="Interfaces\IBalanceHandler.cs" />
     <Compile Include="Interfaces\IExchange.cs" />
+    <Compile Include="Interfaces\IHistoryHandler.cs" />
+    <Compile Include="Interfaces\IPriceHandler.cs" />
+    <Compile Include="Objects\Kline.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

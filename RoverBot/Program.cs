@@ -1,6 +1,7 @@
-﻿using OKX.Api;
-using System;
+﻿using System;
 using System.Threading;
+
+using OKX.Api;
 
 namespace RoverBot
 {
@@ -8,7 +9,7 @@ namespace RoverBot
 	{
 		public const string CheckLine = "******************************************************************************";
 
-		public const string Version = "2.07";
+		public const string Version = "2.12";
 		
 		public const string ApiKey = "0c3d85cc-bdf9-4e69-b8f2-ecf24493ccd6";
 
@@ -34,10 +35,18 @@ namespace RoverBot
 
 			Client.SetApiCredentials(ApiKey, SecretKey, PassPhrase);
 
-			var handler = new BalanceHandler(Client, Socket, "USDT");
+			var handler = new PriceHandler(Socket, "BTC-USDT-SWAP");
 
 			while(true)
 			{
+				if(handler.GetHandlerState())
+				{
+					Console.WriteLine(handler.GetAskPrice());
+				}
+				else
+				{
+					Console.WriteLine("invalid handler");
+				}
 
 				Thread.Sleep(1000);
 			}

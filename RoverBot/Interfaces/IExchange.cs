@@ -2,6 +2,6 @@
 {
 	public interface IExchange
 	{
-
+		IBalanceHandler BalanceHandler { get; set; }
 	}
 }
