@@ -13,6 +13,10 @@ namespace RoverBot
 
 		public const string PassPhrase = "FTY19-641TD-331Eq";
 
+		public static decimal AvailableBalance { get; private set; }
+
+		public static decimal FrozenBalance { get; private set; }
+
 		private static readonly OKXRestApiClient Client;
 
 		static Exchange()
@@ -26,44 +30,6 @@ namespace RoverBot
 			catch(Exception exception)
 			{
 				Logger.Write("Exchange: " + exception.Message);
-			}
-		}
-
-		public static bool GetBalance(out decimal balance)
-		{
-			balance = default;
-
-			try
-			{
-				var task = Client.TradingAccount.GetAccountBalanceAsync();
-
-				task.Wait();
-
-				if(task.Result.Success)
-				{
-					var data = task.Result?.Data?.Details?.FirstOrDefault(x => x.Currency == "USDT");
-
-					if(data?.AvailableBalance.HasValue == default)
-					{
-						Logger.Write("GetBalance: Invalid Response");
-
-						return false;
-					}
-
-					balance = data.AvailableBalance.Value;
-
-					return true;
-				}
-				
-				Logger.Write("GetBalance: " + task.Result.Error.Message);
-
-				return false;
-			}
-			catch(Exception exception)
-			{
-				Logger.Write("GetBalance: " + exception.Message);
-
-				return false;
 			}
 		}
 	}
