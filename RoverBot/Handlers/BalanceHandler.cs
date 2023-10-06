@@ -13,8 +13,6 @@ namespace RoverBot
 
 		public const int BalanceExpirationTime = 60000;
 
-		public readonly string Currency;
-
 		public decimal TotalBalance { get; private set; }
 
 		public decimal AvailableBalance { get; private set; }
@@ -28,6 +26,8 @@ namespace RoverBot
 		private readonly OKXWebSocketApiClient Socket;
 
 		private readonly Timer MainTimer;
+
+		public readonly string Currency;
 
 		private DateTime LastUpdationTime;
 

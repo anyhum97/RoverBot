@@ -7,6 +7,8 @@ namespace RoverBot
 {
 	public sealed class PriceHandler : IPriceHandler
 	{
+		public const int PriceExpirationTime = 30000;
+
 		public readonly string Symbol;
 
 		public decimal AskPrice { get; private set; }
@@ -16,6 +18,8 @@ namespace RoverBot
 		public bool IsAvailable { get; private set; }
 
 		private readonly OKXWebSocketApiClient Socket;
+		
+		private DateTime LastUpdationTime;
 
 		public PriceHandler(OKXWebSocketApiClient socket, string symbol)
 		{
@@ -44,6 +48,8 @@ namespace RoverBot
 				
 				BidPrice = data.BidPrice;
 
+				LastUpdationTime = DateTime.Now;
+
 				IsAvailable = true;
 			}
 			catch(Exception exception)
@@ -64,6 +70,11 @@ namespace RoverBot
 
 		public bool GetHandlerState()
 		{
+			if(LastUpdationTime.AddMilliseconds(PriceExpirationTime) < DateTime.Now)
+			{
+				IsAvailable = false;
+			}
+
 			return IsAvailable;
 		}
 	}

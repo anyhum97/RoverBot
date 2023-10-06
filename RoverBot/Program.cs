@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using System.Linq;
 
 using OKX.Api;
 
@@ -9,7 +10,7 @@ namespace RoverBot
 	{
 		public const string CheckLine = "******************************************************************************";
 
-		public const string Version = "2.12";
+		public const string Version = "2.18";
 		
 		public const string ApiKey = "0c3d85cc-bdf9-4e69-b8f2-ecf24493ccd6";
 
@@ -35,13 +36,13 @@ namespace RoverBot
 
 			Client.SetApiCredentials(ApiKey, SecretKey, PassPhrase);
 
-			var handler = new PriceHandler(Socket, "BTC-USDT-SWAP");
+			var handler = new HistoryHandler(Client, Socket, "BTC-USDT-SWAP", 50);
 
 			while(true)
 			{
 				if(handler.GetHandlerState())
 				{
-					Console.WriteLine(handler.GetAskPrice());
+					Console.WriteLine(handler.GetHistory().First());
 				}
 				else
 				{

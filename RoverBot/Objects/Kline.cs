@@ -1,11 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace RoverBot
 {
 	public readonly struct Kline
 	{
+		public readonly DateTime CloseTime;
+		
 		public readonly decimal Open;
 
 		public readonly decimal Close;
@@ -14,34 +14,19 @@ namespace RoverBot
 
 		public readonly decimal High;
 
-		public readonly DateTime CloseTime;
-
-		public static bool WriteKlineList(List<Kline> list)
+		public Kline(DateTime closeTime, decimal open, decimal close, decimal low, decimal high)
 		{
-			try
-			{
-				if(list == default)
-				{
-					Logger.Write("Kline.WriteKlineList: Invalid Kline List");
+			CloseTime = closeTime;
 
-					return false;
-				}
+			Open = open;
+			Close = close;
+			Low = low;
+			High = high;
+		}
 
-				StringBuilder stringBuilder = new StringBuilder();
-
-				foreach(var record in list)
-				{
-					stringBuilder.AppendLine(string.Format("{0}: {1} {2} {3} {4}"));
-				}
-
-				return true;
-			}
-			catch(Exception exception)
-			{
-				Logger.Write(string.Format("Kline.WriteKlineList: {0}", exception.Message));
-
-				return true;
-			}
+		public override string ToString()
+		{
+			return string.Format("{0:dd.MM.yyyy HH:mm:ss}: Open: {1:F4}, Close: {2:F4}, Low: {3:F4}, High: {4:F4}", CloseTime, Open, Close, Low, High);
 		}
 	}
 }

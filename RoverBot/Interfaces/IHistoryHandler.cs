@@ -2,12 +2,8 @@
 
 namespace RoverBot
 {
-	public interface IHistoryHandler
+	public interface IHistoryHandler : IHandlerState
 	{
 		List<Kline> GetHistory();
-
-		decimal GetCurrentPrice();
-
-		bool GetHandlerState();
 	}
 }
