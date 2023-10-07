@@ -3,6 +3,7 @@ using System.Threading;
 using System.Linq;
 
 using OKX.Api;
+using OKX.Api.Enums;
 
 namespace RoverBot
 {
@@ -10,7 +11,7 @@ namespace RoverBot
 	{
 		public const string CheckLine = "******************************************************************************";
 
-		public const string Version = "2.43";
+		public const string Version = "2.47";
 		
 		public const string ApiKey = "0c3d85cc-bdf9-4e69-b8f2-ecf24493ccd6";
 
@@ -26,7 +27,19 @@ namespace RoverBot
 
 			Logger.Write(ApiKey);
 
-			var Exchange = new Exchange("BTC-USDT-SWAP", OKX.Api.Enums.OkxInstrumentType.Swap);
+			var Client = new OKXRestApiClient();
+
+			var Socket = new OKXWebSocketApiClient();
+
+			Socket.SetApiCredentials(ApiKey, SecretKey, PassPhrase);
+
+			Client.SetApiCredentials(ApiKey, SecretKey, PassPhrase);
+
+			//var Exchange = new Exchange("BTC-USDT-SWAP", OKX.Api.Enums.OkxInstrumentType.Swap);
+
+			OrdersHandler handler = new OrdersHandler(Client, Socket, "BTC-USDT-SWAP", OkxInstrumentType.Swap);
+
+			handler.CancelAllOrders();
 
 			while(true)
 			{

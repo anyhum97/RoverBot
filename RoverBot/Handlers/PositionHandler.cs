@@ -170,6 +170,29 @@ namespace RoverBot
 			return true;
 		}
 
+		public bool ClosePostion()
+		{
+			try
+			{
+				var result = Client.OrderBookTrading.Trade.ClosePositionAsync(Symbol, OkxMarginMode.Isolated).Result;
+
+				if(result.Success == false)
+				{
+					Logger.Write(string.Format("PositionHandler.ClosePostion({0}): {1}", Symbol, result.Error.Message));
+
+					return false;
+				}
+				
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write(string.Format("PositionHandler.ClosePostion({0}): {1}", Symbol, exception.Message));
+
+				return false;
+			}
+		}
+
 		public decimal GetPosition()
 		{
 			return PositionVolume;

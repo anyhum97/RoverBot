@@ -101,7 +101,6 @@
     <Compile Include="Handlers\PriceHandler.cs" />
     <Compile Include="Helpers\Logger.cs" />
     <Compile Include="Interfaces\IBalanceHandler.cs" />
-    <Compile Include="Interfaces\IExchange.cs" />
     <Compile Include="Interfaces\IHandlerState.cs" />
     <Compile Include="Interfaces\IHistoryHandler.cs" />
     <Compile Include="Interfaces\IOrdersHandler.cs" />

@@ -126,7 +126,7 @@ namespace RoverBot
 							price = record.Price.Value;
 						}
 
-						Orders.Add(new Order(type, price, record.Quantity.Value));
+						Orders.Add(new Order(type, price, record.Quantity.Value, record.OrderId));
 					}
 
 					foreach(var record in algo.Data)
@@ -145,7 +145,7 @@ namespace RoverBot
 							price = record.StopLossTriggerPrice.Value;
 						}
 
-						Orders.Add(new Order(type, price, record.Quantity.Value));
+						Orders.Add(new Order(type, price, record.Quantity.Value, record.OrderId));
 					}
 				}
 
@@ -307,7 +307,14 @@ namespace RoverBot
 					return false;
 				}
 
-				Logger.Write(string.Format("OrdersHandler.PlaceLongLimitOrder({0}): Price = {1}, Volume = {2} [OK]", Symbol, price, volume));
+				long orderId = default;
+
+				if(order?.Data?.OrderId != null)
+				{
+					orderId = order.Data.OrderId.Value;
+				}
+
+				Logger.Write(string.Format("OrdersHandler.PlaceLongLimitOrder({0}): Price = {1}, Volume = {2}, Id = {3} [OK]", Symbol, price, volume, orderId));
 
 				return true;
 			}
@@ -339,7 +346,14 @@ namespace RoverBot
 					return false;
 				}
 
-				Logger.Write(string.Format("OrdersHandler.PlaceShortLimitOrder({0}): Price = {1}, Volume = {2} [OK]", Symbol, price, volume));
+				long orderId = default;
+
+				if(order?.Data?.OrderId != null)
+				{
+					orderId = order.Data.OrderId.Value;
+				}
+
+				Logger.Write(string.Format("OrdersHandler.PlaceShortLimitOrder({0}): Price = {1}, Volume = {2}, Id = {3} [OK]", Symbol, price, volume, orderId));
 
 				return true;
 			}
@@ -474,6 +488,51 @@ namespace RoverBot
 			catch(Exception exception)
 			{
 				Logger.Write(string.Format("OrdersHandler.PlaceShortStopLossMarketOrder({0}): {1}", Symbol, exception.Message));
+
+				return false;
+			}
+		}
+
+		public bool CancelAllOrders()
+		{
+			try
+			{
+				if(UpdateOrdersList() == false)
+				{
+					return false;
+				}
+
+				if(Orders.Count == default)
+				{
+					return true;
+				}
+
+				var requests = new List<OkxOrderCancelRequest>();
+
+				foreach(var record in Orders)
+				{
+					requests.Add(new OkxOrderCancelRequest() { InstrumentId = Symbol, OrderId = record.OrderId });
+				}
+
+				var result = Client.OrderBookTrading.Trade.CancelMultipleOrdersAsync(requests).Result;
+
+				if(result.Success == false)
+				{
+					Logger.Write(string.Format("OrdersHandler.CancelAllOrders({0}): {1}", Symbol, result.Error.Message));
+
+					return false;
+				}
+
+				foreach(var record in result.Data)
+				{
+					Logger.Write(string.Format("Order {0} Cancelled", record.OrderId.Value));
+				}
+
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write(string.Format("OrdersHandler.CancelAllOrders({0}): {1}", Symbol, exception.Message));
 
 				return false;
 			}

@@ -24,6 +24,8 @@ namespace RoverBot
 
 		bool PlaceShortStopLossMarketOrder(decimal price, decimal volume);
 
+		bool CancelAllOrders();
+
 		List<Order> GetOrdersList();
 	}
 }

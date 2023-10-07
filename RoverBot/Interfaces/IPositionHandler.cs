@@ -6,6 +6,8 @@
 
 		bool SetLeverage(int leverage);
 
+		bool ClosePostion();
+
 		decimal GetPosition();
 	}
 }
