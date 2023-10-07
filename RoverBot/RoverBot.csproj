@@ -90,9 +90,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Enums\OrderType.cs" />
+    <Compile Include="Enums\PositionSide.cs" />
     <Compile Include="Handlers\BalanceHandler.cs" />
     <Compile Include="Handlers\HistoryHandler.cs" />
     <Compile Include="Handlers\OrdersHandler.cs" />
+    <Compile Include="Handlers\PositionHandler.cs" />
     <Compile Include="Helpers\Exchange.cs" />
     <Compile Include="Handlers\PriceHandler.cs" />
     <Compile Include="Helpers\Logger.cs" />
@@ -105,6 +107,7 @@
     <Compile Include="Interfaces\IPriceHandler.cs" />
     <Compile Include="Objects\Kline.cs" />
     <Compile Include="Objects\Order.cs" />
+    <Compile Include="Objects\Position.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
