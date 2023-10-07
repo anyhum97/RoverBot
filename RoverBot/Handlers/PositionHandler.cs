@@ -3,6 +3,7 @@ using System.Linq;
 using System.Timers;
 
 using OKX.Api;
+using OKX.Api.Models.TradingAccount;
 using OKX.Api.Enums;
 
 namespace RoverBot
@@ -11,9 +12,9 @@ namespace RoverBot
 	{
 		public const int TimerElapsedTime = 1000;
 
-		public const int PositionExpirationTime = 10000;
+		public const int PositionExpirationTime = 40000;
 
-		public Position PositionState { get; private set; }
+		public decimal PositionVolume { get; private set; }
 
 		public bool IsAvailable { get; private set; }
 
@@ -56,6 +57,8 @@ namespace RoverBot
 
 			IsAvailable = UpdatePosition();
 
+			Socket.TradingAccount.SubscribeToPositionUpdatesAsync(SocketUpdation, InstrumentType, instrumentId: Symbol);
+
 			MainTimer = new Timer(TimerElapsedTime);
 
 			MainTimer.Elapsed += TimerElapsed;
@@ -63,6 +66,22 @@ namespace RoverBot
 			MainTimer.Start();
 		}
 		
+		private void SocketUpdation(OkxPosition data)
+		{
+			try
+			{
+				PositionVolume = data.PositionsQuantity.Value;
+
+				LastUpdationTime = DateTime.Now;
+
+				IsAvailable = true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write(string.Format("PositionHandler.SocketUpdation({0}): {1}", Symbol, exception.Message));
+			}
+		}
+
 		private void TimerElapsed(object sender, ElapsedEventArgs e)
 		{
 			try
@@ -74,7 +93,7 @@ namespace RoverBot
 			}
 			catch(Exception exception)
 			{
-				Logger.Write(string.Format("OrdersHandler.TimerElapsed({0}): {1}", Symbol, exception.Message));
+				Logger.Write(string.Format("PositionHandler.TimerElapsed({0}): {1}", Symbol, exception.Message));
 			}
 		}
 
@@ -100,18 +119,7 @@ namespace RoverBot
 					return false;
 				}
 
-				decimal volume = record.PositionsQuantity.Value;
-
-				var positionSide = PositionSide.NoPosition;
-
-				if(volume < 0.0m)
-				{
-
-				}
-
-				PositionState = new Position(positionSide, volume);
-
-				PositionState.ToString();
+				PositionVolume = record.PositionsQuantity.Value;
 
 				LastUpdationTime = DateTime.Now;
 
@@ -162,9 +170,9 @@ namespace RoverBot
 			return true;
 		}
 
-		public Position GetPosition()
+		public decimal GetPosition()
 		{
-			return PositionState;
+			return PositionVolume;
 		}
 
 		public bool GetHandlerState()
