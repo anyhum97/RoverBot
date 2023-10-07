@@ -1,7 +1,9 @@
 ﻿namespace RoverBot
 {
-	public interface IExchange
+	public interface IExchange : IHandlerState
 	{
-		IBalanceHandler BalanceHandler { get; set; }
+		IBalanceHandler BalanceHandler { get; }
+
+		IHistoryHandler HistoryHandler { get; }
 	}
 }

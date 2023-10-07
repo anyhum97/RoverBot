@@ -12,6 +12,10 @@ namespace RoverBot
 	{
 		public const int HistoryExpirationTime = 80000;
 
+		public const int MinHistoryCount = 1;
+
+		public const int MaxHistoryCount = 299;
+
 		public List<Kline> History { get; private set; }
 
 		public bool IsAvailable { get; private set; }
@@ -30,7 +34,7 @@ namespace RoverBot
 
 		private DateTime LastKlineServerTime;
 
-		public HistoryHandler(OKXRestApiClient client, OKXWebSocketApiClient socket, string symbol, int historyCount, OkxPeriod period = OkxPeriod.OneMinute)
+		public HistoryHandler(OKXRestApiClient client, OKXWebSocketApiClient socket, string symbol, int historyCount = MaxHistoryCount, OkxPeriod period = OkxPeriod.OneMinute)
 		{
 			if(client == default)
 			{
@@ -47,7 +51,7 @@ namespace RoverBot
 				throw new Exception();
 			}
 
-			if(historyCount < 1)
+			if(historyCount < MinHistoryCount || historyCount > MaxHistoryCount)
 			{
 				throw new Exception();
 			}
@@ -118,9 +122,9 @@ namespace RoverBot
 			return History;
 		}
 
-		public int GetHistoryLimit()
+		public int GetMaxHistoryCount()
 		{
-			return 299;
+			return MaxHistoryCount;
 		}
 
 		public bool GetHandlerState()

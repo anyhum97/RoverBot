@@ -10,7 +10,7 @@ namespace RoverBot
 	{
 		public const string CheckLine = "******************************************************************************";
 
-		public const string Version = "2.39";
+		public const string Version = "2.43";
 		
 		public const string ApiKey = "0c3d85cc-bdf9-4e69-b8f2-ecf24493ccd6";
 
@@ -26,31 +26,10 @@ namespace RoverBot
 
 			Logger.Write(ApiKey);
 
-			var Client = new OKXRestApiClient();
-
-			var Socket = new OKXWebSocketApiClient();
-
-			Socket.SetApiCredentials(ApiKey, SecretKey, PassPhrase);
-
-			Client.SetApiCredentials(ApiKey, SecretKey, PassPhrase);
-
-			//var handler = new OrdersHandler(Client, Socket, "BTC-USDT-SWAP");
-
-			//handler.PlaceShortLimitOrder(30000, 1);
-
-			var handler = new SymbolInfo(Client, "ETH-USDT-SWAP", OKX.Api.Enums.OkxInstrumentType.Swap);
+			var Exchange = new Exchange("BTC-USDT-SWAP", OKX.Api.Enums.OkxInstrumentType.Swap);
 
 			while(true)
 			{
-				if(handler.GetHandlerState())
-				{
-					//Console.WriteLine(handler.GetHistory().First());
-				}
-				else
-				{
-					Console.WriteLine("invalid handler");
-				}
-
 				Thread.Sleep(1000);
 			}
 		}

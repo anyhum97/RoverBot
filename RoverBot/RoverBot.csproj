@@ -90,11 +90,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Enums\OrderType.cs" />
+    <Compile Include="Enums\TradingState.cs" />
     <Compile Include="Handlers\BalanceHandler.cs" />
     <Compile Include="Handlers\HistoryHandler.cs" />
     <Compile Include="Handlers\OrdersHandler.cs" />
     <Compile Include="Handlers\PositionHandler.cs" />
     <Compile Include="Handlers\SymbolInfo.cs" />
+    <Compile Include="Helpers\BaseExchange.cs" />
     <Compile Include="Helpers\Exchange.cs" />
     <Compile Include="Handlers\PriceHandler.cs" />
     <Compile Include="Helpers\Logger.cs" />
