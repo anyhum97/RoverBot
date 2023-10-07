@@ -10,7 +10,7 @@ namespace RoverBot
 	{
 		public const string CheckLine = "******************************************************************************";
 
-		public const string Version = "2.18";
+		public const string Version = "2.28";
 		
 		public const string ApiKey = "0c3d85cc-bdf9-4e69-b8f2-ecf24493ccd6";
 
@@ -26,8 +26,6 @@ namespace RoverBot
 
 			Logger.Write(ApiKey);
 
-			//Exchange.GetBalance(out var balance);
-
 			var Client = new OKXRestApiClient();
 
 			var Socket = new OKXWebSocketApiClient();
@@ -36,13 +34,17 @@ namespace RoverBot
 
 			Client.SetApiCredentials(ApiKey, SecretKey, PassPhrase);
 
-			var handler = new HistoryHandler(Client, Socket, "BTC-USDT-SWAP", 50);
+			var handler = new OrdersHandler(Client, Socket, "BTC-USDT-SWAP");
+
+			Thread.Sleep(1000);
+
+			handler.PlaceShortLimitOrder(30000, 1);
 
 			while(true)
 			{
 				if(handler.GetHandlerState())
 				{
-					Console.WriteLine(handler.GetHistory().First());
+					//Console.WriteLine(handler.GetHistory().First());
 				}
 				else
 				{

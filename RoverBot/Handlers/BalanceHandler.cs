@@ -21,13 +21,13 @@ namespace RoverBot
 
 		public bool IsAvailable { get; private set; }
 
+		public readonly string Currency;
+
 		private readonly OKXRestApiClient Client;
 
 		private readonly OKXWebSocketApiClient Socket;
 
 		private readonly Timer MainTimer;
-
-		public readonly string Currency;
 
 		private DateTime LastUpdationTime;
 

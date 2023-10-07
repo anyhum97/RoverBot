@@ -16,6 +16,12 @@ namespace RoverBot
 
 		public bool IsAvailable { get; private set; }
 
+		public readonly string Symbol;
+
+		public readonly OkxPeriod Period;
+
+		public readonly int HistoryCount;
+
 		private readonly OKXRestApiClient Client;
 
 		private readonly OKXWebSocketApiClient Socket;
@@ -23,12 +29,6 @@ namespace RoverBot
 		private DateTime LastUpdationTime;
 
 		private DateTime LastKlineServerTime;
-
-		public readonly string Symbol;
-
-		public readonly OkxPeriod Period;
-
-		public readonly int HistoryCount;
 
 		public HistoryHandler(OKXRestApiClient client, OKXWebSocketApiClient socket, string symbol, int historyCount, OkxPeriod period = OkxPeriod.OneMinute)
 		{
@@ -116,6 +116,11 @@ namespace RoverBot
 		public List<Kline> GetHistory()
 		{
 			return History;
+		}
+
+		public int GetHistoryLimit()
+		{
+			return 299;
 		}
 
 		public bool GetHandlerState()
