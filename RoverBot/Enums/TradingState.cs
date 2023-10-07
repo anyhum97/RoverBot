@@ -3,7 +3,7 @@
 	public enum TradingState
 	{
 		Invalid = default,
-
+		InvalidHandlerState,
 		BalanceHandlerInitialization,
 		HistoryHandlerInitialization,
 		OrdersHandlerInitialization,
@@ -11,6 +11,8 @@
 		PriceHandlerInitialization,
 		SymbolInfoInitialization,
 		InitializationReady,
-
+		CheckLeverageDone,
+		SetTradingParamsDone,
+		Trading,
 	}
 }

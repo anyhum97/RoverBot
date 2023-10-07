@@ -15,6 +15,10 @@ namespace RoverBot
 
 		public const string PassPhrase = "FTY19-641TD-331Eq";
 		
+		private static readonly OKXRestApiClient Client;
+
+		private static readonly OKXWebSocketApiClient Socket;
+
 		public IBalanceHandler BalanceHandler { get; private set; }
 
 		public IHistoryHandler HistoryHandler { get; private set; }
@@ -31,11 +35,13 @@ namespace RoverBot
 
 		public readonly string Symbol;
 
-		private static readonly OKXRestApiClient Client;
+		public readonly OkxInstrumentType InstrumentType;
 
-		private static readonly OKXWebSocketApiClient Socket;
+		public readonly int Leverage;
 
-		private readonly OkxInstrumentType InstrumentType;
+		public readonly int MinLeverage;
+
+		public readonly int MaxLeverage;
 
 		static Exchange()
 		{
@@ -55,7 +61,7 @@ namespace RoverBot
 			}
 		}
 
-		public Exchange(string symbol, OkxInstrumentType instrumentType, int pricePrecision = default)
+		public Exchange(string symbol, OkxInstrumentType instrumentType, int leverage, int pricePrecision = default)
 		{
 			try
 			{
@@ -82,39 +88,109 @@ namespace RoverBot
 
 				Symbol = symbol;
 
+				Leverage = leverage;
+
 				InstrumentType = instrumentType;
-
+				
 				BalanceHandler = new BalanceHandler(Client, Socket);
-
+				
 				WaitForHandlerInitialization(BalanceHandler, TradingState.BalanceHandlerInitialization);
-
+				
 				HistoryHandler = new HistoryHandler(Client, Socket, symbol);
-
+				
 				WaitForHandlerInitialization(HistoryHandler, TradingState.HistoryHandlerInitialization);
-
+				
 				OrdersHandler = new OrdersHandler(Client, Socket, symbol, instrumentType);
-
+				
 				WaitForHandlerInitialization(OrdersHandler, TradingState.OrdersHandlerInitialization);
 
 				PositionHandler = new PositionHandler(Client, Socket, symbol, instrumentType);
 
 				WaitForHandlerInitialization(PositionHandler, TradingState.PositionHandlerInitialization);
-
+				
 				PriceHandler = new PriceHandler(Socket, symbol);
-
+				
 				WaitForHandlerInitialization(PriceHandler, TradingState.PriceHandlerInitialization);
-
+				
 				SymbolInfo = new SymbolInfo(Client, symbol, instrumentType);
-
+				
 				WaitForHandlerInitialization(SymbolInfo, TradingState.SymbolInfoInitialization);
-
+				
 				TradingState = TradingState.InitializationReady;
 
+				MinLeverage = SymbolInfo.GetMinLeverage();
 
+				MaxLeverage = SymbolInfo.GetMaxLeverage();
+
+				if(leverage < MinLeverage || leverage > MaxLeverage)
+				{
+					Logger.Write("Exchange: Invalid Leverage");
+
+					TradingState = TradingState.Invalid;
+
+					return;
+				}
+
+				TradingState = TradingState.CheckLeverageDone;
+
+				if(SetTradingParams() == false)
+				{
+					TradingState = TradingState.Invalid;
+
+					return;
+				}
+
+				TradingState = TradingState.SetTradingParamsDone;
+
+				TradingCycle();
 			}
 			catch(Exception exception)
 			{
 				Logger.Write("Exchange: " + exception.Message);
+			}
+		}
+
+		private bool SetTradingParams()
+		{
+			try
+			{
+				const int InitializationDelay = 10000;
+
+				while(true)
+				{
+					bool state = true;
+
+					if(state)
+					{
+						if(PositionHandler.SetIsolatedMargin() == false)
+						{
+							state = false;
+						}
+					}
+
+					if(state)
+					{
+						if(PositionHandler.SetLeverage(Leverage) == false)
+						{
+							state = false;
+						}
+					}
+
+					if(state)
+					{
+						break;
+					}
+
+					Thread.Sleep(InitializationDelay);
+				}
+
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write(string.Format("Exchange.SetTradingParams({0}): {1}", Symbol, exception.Message));
+
+				return false;
 			}
 		}
 
@@ -125,6 +201,16 @@ namespace RoverBot
 			while(handler.GetHandlerState() == false)
 			{
 				Thread.Sleep(1);
+			}
+		}
+
+		private void TradingCycle()
+		{
+			TradingState = TradingState.Trading;
+
+			while(true)
+			{
+				Thread.Sleep(100);
 			}
 		}
 	}
