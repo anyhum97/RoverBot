@@ -30,6 +30,8 @@ namespace RoverBot
 
 		private readonly OKXWebSocketApiClient Socket;
 
+		private readonly object LockHistory = new object();
+
 		private DateTime LastUpdationTime;
 
 		private DateTime LastKlineServerTime;
@@ -101,7 +103,10 @@ namespace RoverBot
 					return false;
 				}
 
-				History = history.Data.Select(x => new Kline(x.Time.AddMinutes(1.0).ToLocalTime(), x.Open, x.Close, x.Low, x.High)).ToList().GetRange(1, HistoryCount);
+				lock(LockHistory)
+				{
+					History = history.Data.Select(x => new Kline(x.Time.AddMinutes(1.0).ToLocalTime(), x.Open, x.Close, x.Low, x.High)).ToList().GetRange(1, HistoryCount);
+				}
 
 				LastKlineServerTime = history.Data.First().Time;
 
@@ -119,7 +124,14 @@ namespace RoverBot
 
 		public List<Kline> GetHistory()
 		{
-			return History;
+			List<Kline> history = default;
+
+			lock(LockHistory)
+			{
+				history = new List<Kline>(History);
+			}
+
+			return history;
 		}
 
 		public int GetMaxHistoryCount()

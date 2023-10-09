@@ -287,8 +287,10 @@ namespace RoverBot
 			}
 		}
 
-		public bool PlaceLongLimitOrder(decimal price, decimal volume)
+		public bool PlaceLongLimitOrder(decimal price, decimal volume, out long orderId)
 		{
+			orderId = default;
+
 			try
 			{
 				var order = Client.OrderBookTrading.Trade.PlaceOrderAsync(Symbol, OkxTradeMode.Isolated, OkxOrderSide.Buy, OkxPositionSide.Net, OkxOrderType.LimitOrder, volume, price).Result;
@@ -307,14 +309,9 @@ namespace RoverBot
 					return false;
 				}
 
-				long orderId = default;
+				orderId = order.Data.OrderId.Value;
 
-				if(order?.Data?.OrderId != null)
-				{
-					orderId = order.Data.OrderId.Value;
-				}
-
-				Logger.Write(string.Format("OrdersHandler.PlaceLongLimitOrder({0}): Price = {1}, Volume = {2}, Id = {3} [OK]", Symbol, price, volume, orderId));
+				Logger.Write(string.Format("OrdersHandler.PlaceLongLimitOrder({0}): Price = {1}, Volume = {2}, Id = {3} [OK]", Symbol, price, volume, order.Data.OrderId.Value));
 
 				return true;
 			}
@@ -326,8 +323,10 @@ namespace RoverBot
 			}
 		}
 
-		public bool PlaceShortLimitOrder(decimal price, decimal volume)
+		public bool PlaceShortLimitOrder(decimal price, decimal volume, out long orderId)
 		{
+			orderId = default;
+
 			try
 			{
 				var order = Client.OrderBookTrading.Trade.PlaceOrderAsync(Symbol, OkxTradeMode.Isolated, OkxOrderSide.Sell, OkxPositionSide.Net, OkxOrderType.LimitOrder, volume, price).Result;
@@ -346,14 +345,9 @@ namespace RoverBot
 					return false;
 				}
 
-				long orderId = default;
+				orderId = order.Data.OrderId.Value;
 
-				if(order?.Data?.OrderId != null)
-				{
-					orderId = order.Data.OrderId.Value;
-				}
-
-				Logger.Write(string.Format("OrdersHandler.PlaceShortLimitOrder({0}): Price = {1}, Volume = {2}, Id = {3} [OK]", Symbol, price, volume, orderId));
+				Logger.Write(string.Format("OrdersHandler.PlaceShortLimitOrder({0}): Price = {1}, Volume = {2}, Id = {3} [OK]", Symbol, price, volume, order.Data.OrderId.Value));
 
 				return true;
 			}
@@ -365,8 +359,10 @@ namespace RoverBot
 			}
 		}
 
-		public bool PlaceLongTakeProfitMarketOrder(decimal price, decimal volume)
+		public bool PlaceLongTakeProfitMarketOrder(decimal price, decimal volume, out long orderId)
 		{
+			orderId = default;
+
 			try
 			{
 				var order = Client.OrderBookTrading.AlgoTrading.PlaceAlgoOrderAsync(Symbol, OkxTradeMode.Isolated, OkxOrderSide.Sell, OkxAlgoOrderType.Conditional, null, OkxPositionSide.Net, volume, tpTriggerPrice: price, tpTriggerPriceType: OkxAlgoPriceType.Last, tpOrderPrice: -1, reduceOnly: true).Result;
@@ -385,7 +381,9 @@ namespace RoverBot
 					return false;
 				}
 
-				Logger.Write(string.Format("OrdersHandler.PlaceLongTakeProfitMarketOrder({0}): Price = {1}, Volume = {2} [OK]", Symbol, price, volume));
+				orderId = order.Data.AlgoOrderId.Value;
+
+				Logger.Write(string.Format("OrdersHandler.PlaceLongTakeProfitMarketOrder({0}): Price = {1}, Volume = {2}, Id = {3} [OK]", Symbol, price, volume, order.Data.AlgoOrderId.Value));
 
 				return true;
 			}
@@ -397,8 +395,10 @@ namespace RoverBot
 			}
 		}
 
-		public bool PlaceLongStopLossMarketOrder(decimal price, decimal volume)
+		public bool PlaceLongStopLossMarketOrder(decimal price, decimal volume, out long orderId)
 		{
+			orderId = default;
+
 			try
 			{
 				var order = Client.OrderBookTrading.AlgoTrading.PlaceAlgoOrderAsync(Symbol, OkxTradeMode.Isolated, OkxOrderSide.Sell, OkxAlgoOrderType.Conditional, null, OkxPositionSide.Net, volume, slTriggerPrice: price, slTriggerPriceType: OkxAlgoPriceType.Last, slOrderPrice: -1, reduceOnly: true).Result;
@@ -417,7 +417,9 @@ namespace RoverBot
 					return false;
 				}
 
-				Logger.Write(string.Format("OrdersHandler.PlaceLongStopLossMarketOrder({0}): Price = {1}, Volume = {2} [OK]", Symbol, price, volume));
+				orderId = order.Data.AlgoOrderId.Value;
+
+				Logger.Write(string.Format("OrdersHandler.PlaceLongStopLossMarketOrder({0}): Price = {1}, Volume = {2}, Id = {3} [OK]", Symbol, price, volume, order.Data.AlgoOrderId.Value));
 
 				return true;
 			}
@@ -429,8 +431,10 @@ namespace RoverBot
 			}
 		}
 
-		public bool PlaceShortTakeProfitMarketOrder(decimal price, decimal volume)
+		public bool PlaceShortTakeProfitMarketOrder(decimal price, decimal volume, out long orderId)
 		{
+			orderId = default;
+
 			try
 			{
 				var order = Client.OrderBookTrading.AlgoTrading.PlaceAlgoOrderAsync(Symbol, OkxTradeMode.Isolated, OkxOrderSide.Buy, OkxAlgoOrderType.Conditional, null, OkxPositionSide.Net, volume, tpTriggerPrice: price, tpTriggerPriceType: OkxAlgoPriceType.Last, tpOrderPrice: -1, reduceOnly: true).Result;
@@ -449,7 +453,9 @@ namespace RoverBot
 					return false;
 				}
 
-				Logger.Write(string.Format("OrdersHandler.PlaceShortTakeProfitMarketOrder({0}): Price = {1}, Volume = {2} [OK]", Symbol, price, volume));
+				orderId = order.Data.AlgoOrderId.Value;
+
+				Logger.Write(string.Format("OrdersHandler.PlaceShortTakeProfitMarketOrder({0}): Price = {1}, Volume = {2}, Id = {3} [OK]", Symbol, price, volume, order.Data.AlgoOrderId.Value));
 
 				return true;
 			}
@@ -461,8 +467,10 @@ namespace RoverBot
 			}
 		}
 
-		public bool PlaceShortStopLossMarketOrder(decimal price, decimal volume)
+		public bool PlaceShortStopLossMarketOrder(decimal price, decimal volume, out long orderId)
 		{
+			orderId = default;
+
 			try
 			{
 				var order = Client.OrderBookTrading.AlgoTrading.PlaceAlgoOrderAsync(Symbol, OkxTradeMode.Isolated, OkxOrderSide.Buy, OkxAlgoOrderType.Conditional, null, OkxPositionSide.Net, volume, slTriggerPrice: price, slTriggerPriceType: OkxAlgoPriceType.Last, slOrderPrice: -1, reduceOnly: true).Result;
@@ -481,13 +489,96 @@ namespace RoverBot
 					return false;
 				}
 
-				Logger.Write(string.Format("OrdersHandler.PlaceShortStopLossMarketOrder({0}): Price = {1}, Volume = {2} [OK]", Symbol, price, volume));
+				orderId = order.Data.AlgoOrderId.Value;
+
+				Logger.Write(string.Format("OrdersHandler.PlaceShortStopLossMarketOrder({0}): Price = {1}, Volume = {2}, Id = {3} [OK]", Symbol, price, volume, order.Data.AlgoOrderId.Value));
 
 				return true;
 			}
 			catch(Exception exception)
 			{
 				Logger.Write(string.Format("OrdersHandler.PlaceShortStopLossMarketOrder({0}): {1}", Symbol, exception.Message));
+
+				return false;
+			}
+		}
+
+		public bool CancelAlgoOrder(long orderId)
+		{
+			try
+			{
+				if(orderId == default)
+				{
+					Logger.Write(string.Format("OrdersHandler.CancelAlgoOrder({0}): Invalid OrderId", Symbol));
+
+					return false;
+				}
+
+				var requests = new List<OkxAlgoOrderRequest>()
+				{
+					new OkxAlgoOrderRequest() { Instrument = Symbol, AlgoOrderId = orderId }
+				};
+
+				var result = Client.OrderBookTrading.AlgoTrading.CancelAlgoOrderAsync(requests).Result;
+
+				if(result.Success == false)
+				{
+					Logger.Write(string.Format("OrdersHandler.CancelAlgoOrder({0}): {1}", Symbol, result.Error.Message));
+
+					return false;
+				}
+
+				if(result?.Data?.ErrorCode != "0")
+				{
+					Logger.Write(string.Format("OrdersHandler.CancelAlgoOrder({0}): {1}", Symbol, result.Data.ErrorMessage));
+
+					return false;
+				}
+
+				Logger.Write(string.Format("Order {0} Cancelled", orderId));
+
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write(string.Format("OrdersHandler.CancelAlgoOrder({0}): {1}", Symbol, exception.Message));
+
+				return false;
+			}
+		}
+
+		public bool CancelOrder(long orderId)
+		{
+			try
+			{
+				if(orderId == default)
+				{
+					Logger.Write(string.Format("OrdersHandler.CancelOrder({0}): Invalid OrderId", Symbol));
+
+					return false;
+				}
+
+				var result = Client.OrderBookTrading.Trade.CancelOrderAsync(Symbol, orderId).Result;
+
+				if(result.Success == false)
+				{
+					Logger.Write(string.Format("OrdersHandler.CancelOrder({0}): {1}", Symbol, result.Error.Message));
+
+					return false;
+				}
+
+				if(result?.Data?.ErrorCode != default)
+				{
+					return CancelAlgoOrder(orderId);
+				}
+
+				Logger.Write(string.Format("Order {0} Cancelled", orderId));
+
+				return true;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write(string.Format("OrdersHandler.CancelOrder({0}): {1}", Symbol, exception.Message));
 
 				return false;
 			}

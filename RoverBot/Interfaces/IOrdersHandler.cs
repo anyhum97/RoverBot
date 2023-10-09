@@ -12,17 +12,19 @@ namespace RoverBot
 
 		bool PlaceShortBestPriceOrder(decimal price, decimal volume);
 
-		bool PlaceLongLimitOrder(decimal price, decimal volume);
+		bool PlaceLongLimitOrder(decimal price, decimal volume, out long orderId);
 
-		bool PlaceShortLimitOrder(decimal price, decimal volume);
+		bool PlaceShortLimitOrder(decimal price, decimal volume, out long orderId);
 
-		bool PlaceLongTakeProfitMarketOrder(decimal price, decimal volume);
+		bool PlaceLongTakeProfitMarketOrder(decimal price, decimal volume, out long orderId);
 
-		bool PlaceLongStopLossMarketOrder(decimal price, decimal volume);
+		bool PlaceLongStopLossMarketOrder(decimal price, decimal volume, out long orderId);
 
-		bool PlaceShortTakeProfitMarketOrder(decimal price, decimal volume);
+		bool PlaceShortTakeProfitMarketOrder(decimal price, decimal volume, out long orderId);
 
-		bool PlaceShortStopLossMarketOrder(decimal price, decimal volume);
+		bool PlaceShortStopLossMarketOrder(decimal price, decimal volume, out long orderId);
+
+		public bool CancelOrder(long orderId);
 
 		bool CancelAllOrders();
 
