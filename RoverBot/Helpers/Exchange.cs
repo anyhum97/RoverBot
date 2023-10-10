@@ -43,9 +43,9 @@ namespace RoverBot
 
 		public readonly int MaxLeverage;
 
-		public readonly int Border1 = 11;
+		public readonly int Border1 = 30;
 
-		public readonly int Border2 = 11;
+		public readonly int Border2 = 30;
 
 		static Exchange()
 		{
@@ -266,30 +266,31 @@ namespace RoverBot
 		{
 			TradingState = TradingState.Trading;
 
-			const decimal LongTakeProfitFactor = 1.005m;
-
-			const decimal LongStopLossFactor = 0.999m;
-
-			const decimal ShortTakeProfitFactor = 0.995m;
-
-			const decimal ShortStopLossFactor = 1.001m;
-
 			decimal entry = default;
 
 			decimal takeProfit = default;
 
 			decimal stopLoss = default;
 
+			decimal lastBorderPrice1 = default;
+
+			decimal lastBorderPrice2 = default;
+
 			while(true)
 			{
 				decimal border1 = default;
+
 				decimal border2 = default;
 
 				decimal min = decimal.MaxValue;
+
 				decimal max = decimal.MinValue;
 
 				decimal ask = PriceHandler.GetAskPrice();
+
 				decimal bid = PriceHandler.GetBidPrice();
+
+				decimal tick = SymbolInfo.GetPriceTick();
 
 				decimal position = PositionHandler.GetPosition();
 
@@ -326,6 +327,24 @@ namespace RoverBot
 
 					++border2;
 				}
+
+				var borderPrice1 = history.GetRange(default, Border1).Min(x => x.Low);
+
+				var borderPrice2 = history.GetRange(default, Border1).Max(x => x.High);
+
+				if(inPosition == false || lastBorderPrice1 == default || lastBorderPrice2 == default)
+				{
+					if(borderPrice1 != lastBorderPrice1 || borderPrice2 != lastBorderPrice2)
+					{
+						Logger.Write(string.Format("Exchange.TradingCycle({0}): LowBorder = {1}, HighBorder = {2}", Symbol, borderPrice1, borderPrice2));
+
+						lastBorderPrice1 = borderPrice1;
+
+						lastBorderPrice2 = borderPrice2;
+					}
+				}
+
+				// Alredy in position on startup
 
 				if(inPosition)
 				{
@@ -366,30 +385,42 @@ namespace RoverBot
 				{
 					if(border1 >= Border1)
 					{
-						OrdersHandler.PlaceShortMarketOrder(1);
+						if(OrdersHandler.PlaceShortBestPriceOrder(bid, 1))
+						{
+							takeProfit = bid - 50 * tick;
 
-						takeProfit = ShortTakeProfitFactor * bid;
+							stopLoss = bid + 10 * tick;
 
-						stopLoss = ShortStopLossFactor * bid;
+							entry = bid;
 
-						entry = bid;
+							WaitForPosition();
 
-						WaitForPosition();
+							OrdersHandler.PlaceShortStopLossMarketOrder(stopLoss - 1, 1, out _);
+
+							Logger.Write(string.Format("Exchange.TradingCycle({0}): EntryShort = {1}, TakeProfit = {2}, StopLoss = {3}", Symbol, entry, takeProfit, stopLoss));
+						}
 					}
 
 					if(border2 >= Border2)
 					{
-						OrdersHandler.PlaceLongMarketOrder(1);
+						if(OrdersHandler.PlaceLongBestPriceOrder(ask, 1))
+						{
+							takeProfit = ask + 50 * tick;
 
-						takeProfit = LongTakeProfitFactor * ask;
+							stopLoss = ask - 10 * tick;
 
-						stopLoss = LongStopLossFactor * ask;
+							entry = ask;
 
-						entry = ask;
+							WaitForPosition();
 
-						WaitForPosition();
+							OrdersHandler.PlaceLongStopLossMarketOrder(stopLoss + 1, 1, out _);
+
+							Logger.Write(string.Format("Exchange.TradingCycle({0}): EntryLong = {1}, TakeProfit = {2}, StopLoss = {3}", Symbol, entry, takeProfit, stopLoss));
+						}
 					}
 				}
+
+				Thread.Sleep(100);
 			}
 		}
 	}
