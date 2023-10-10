@@ -9,7 +9,7 @@ namespace RoverBot
 	{
 		public const string CheckLine = "******************************************************************************";
 
-		public const string Version = "2.58";
+		public const string Version = "2.63";
 		
 		public const string ApiKey = "0c3d85cc-bdf9-4e69-b8f2-ecf24493ccd6";
 
@@ -21,7 +21,7 @@ namespace RoverBot
 
 			Logger.Write(ApiKey);
 
-			var exchange = new Exchange("BTC-USDT-SWAP", OkxInstrumentType.Swap, 10);
+			new Exchange("BTC-USDT-SWAP", OkxInstrumentType.Swap, 10);
 
 			while(true)
 			{

@@ -6,6 +6,8 @@ namespace RoverBot
 	{
 		List<Kline> GetHistory();
 
+		public Kline GetCurrentKline();
+
 		int GetMaxHistoryCount();
 	}
 }

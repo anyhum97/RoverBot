@@ -43,6 +43,10 @@ namespace RoverBot
 
 		public readonly int MaxLeverage;
 
+		public readonly int Border1 = 11;
+
+		public readonly int Border2 = 11;
+
 		static Exchange()
 		{
 			try
@@ -204,13 +208,188 @@ namespace RoverBot
 			}
 		}
 
+		private void WaitForPosition()
+		{
+			try
+			{
+				TradingState = TradingState.WaitingForPosition;
+
+				Logger.Write(string.Format("Exchange.WaitForPosition({0}): Waiting", Symbol));
+
+				int ticks = default;
+
+				while(PositionHandler.GetPosition() == default)
+				{
+					Thread.Sleep(1);
+
+					++ticks;
+				}
+
+				Logger.Write(string.Format("Exchange.WaitForPosition({0}): Ready, ticks = {1}", Symbol, ticks));
+
+				TradingState = TradingState.Trading;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write(string.Format("Exchange.WaitForPosition({0}): {1}", Symbol, exception.Message));
+			}
+		}
+
+		private void WaitForOutOfPosition()
+		{
+			try
+			{
+				TradingState = TradingState.WaitingForOutOfPosition;
+
+				Logger.Write(string.Format("Exchange.WaitForOutOfPosition({0}): Waiting", Symbol));
+
+				int ticks = default;
+
+				while(PositionHandler.GetPosition() != default)
+				{
+					Thread.Sleep(1);
+
+					++ticks;
+				}
+
+				Logger.Write(string.Format("Exchange.WaitForOutOfPosition({0}): Ready, ticks = {1}", Symbol, ticks));
+
+				TradingState = TradingState.Trading;
+			}
+			catch(Exception exception)
+			{
+				Logger.Write(string.Format("Exchange.WaitForOutOfPosition({0}): {1}", Symbol, exception.Message));
+			}
+		}
+
 		private void TradingCycle()
 		{
 			TradingState = TradingState.Trading;
 
+			const decimal LongTakeProfitFactor = 1.005m;
+
+			const decimal LongStopLossFactor = 0.999m;
+
+			const decimal ShortTakeProfitFactor = 0.995m;
+
+			const decimal ShortStopLossFactor = 1.001m;
+
+			decimal entry = default;
+
+			decimal takeProfit = default;
+
+			decimal stopLoss = default;
+
 			while(true)
 			{
-				Thread.Sleep(100);
+				decimal border1 = default;
+				decimal border2 = default;
+
+				decimal min = decimal.MaxValue;
+				decimal max = decimal.MinValue;
+
+				decimal ask = PriceHandler.GetAskPrice();
+				decimal bid = PriceHandler.GetBidPrice();
+
+				decimal position = PositionHandler.GetPosition();
+
+				var history = HistoryHandler.GetHistory();
+
+				bool inPosition = position != 0.0m;
+
+				bool isLong = position > 0.0m;
+
+				for(int i=default; i<Border1; ++i)
+				{
+					decimal low = history[i].Low;
+
+					if(low < bid)
+					{
+						break;
+					}
+
+					min = Math.Min(low, min);
+
+					++border1;
+				}
+
+				for(int i=default; i<Border2; ++i)
+				{
+					decimal high = history[i].High;
+
+					if(high > ask)
+					{
+						break;
+					}
+
+					max = Math.Max(high, max);
+
+					++border2;
+				}
+
+				if(inPosition)
+				{
+					if(isLong)
+					{
+						if(ask >= takeProfit)
+						{
+							OrdersHandler.PlaceShortMarketOrder(1);
+
+							WaitForOutOfPosition();
+						}
+
+						if(bid <= stopLoss)
+						{
+							OrdersHandler.PlaceShortMarketOrder(1);
+
+							WaitForOutOfPosition();
+						}
+					}
+					else
+					{
+						if(bid <= takeProfit)
+						{
+							OrdersHandler.PlaceLongMarketOrder(1);
+
+							WaitForOutOfPosition();
+						}
+
+						if(ask >= stopLoss)
+						{
+							OrdersHandler.PlaceLongMarketOrder(1);
+
+							WaitForOutOfPosition();
+						}
+					}
+				}
+				else
+				{
+					if(border1 >= Border1)
+					{
+						OrdersHandler.PlaceShortMarketOrder(1);
+
+						takeProfit = ShortTakeProfitFactor * bid;
+
+						stopLoss = ShortStopLossFactor * bid;
+
+						entry = bid;
+
+						WaitForPosition();
+					}
+
+					if(border2 >= Border2)
+					{
+						OrdersHandler.PlaceLongMarketOrder(1);
+
+						takeProfit = LongTakeProfitFactor * ask;
+
+						stopLoss = LongStopLossFactor * ask;
+
+						entry = ask;
+
+						WaitForPosition();
+					}
+				}
 			}
 		}
 	}

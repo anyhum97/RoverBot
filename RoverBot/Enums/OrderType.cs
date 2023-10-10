@@ -1,8 +1,8 @@
 ﻿using System;
 
 using OKX.Api.Models.Trade;
-using OKX.Api.Enums;
 using OKX.Api.Models.AlgoTrading;
+using OKX.Api.Enums;
 
 namespace RoverBot
 {

@@ -18,6 +18,8 @@ namespace RoverBot
 
 		public List<Kline> History { get; private set; }
 
+		public Kline CurrentKline { get; private set; }
+
 		public bool IsAvailable { get; private set; }
 
 		public readonly string Symbol;
@@ -105,6 +107,10 @@ namespace RoverBot
 
 				lock(LockHistory)
 				{
+					var current = history.Data.First();
+
+					CurrentKline = new Kline(current.Time.AddMinutes(1.0).ToLocalTime(), current.Open, current.Close, current.Low, current.High);
+
 					History = history.Data.Select(x => new Kline(x.Time.AddMinutes(1.0).ToLocalTime(), x.Open, x.Close, x.Low, x.High)).ToList().GetRange(1, HistoryCount);
 				}
 
@@ -120,6 +126,11 @@ namespace RoverBot
 
 				return false;
 			}
+		}
+
+		public Kline GetCurrentKline()
+		{
+			return CurrentKline;
 		}
 
 		public List<Kline> GetHistory()

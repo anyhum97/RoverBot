@@ -13,6 +13,8 @@
 		InitializationReady,
 		CheckLeverageDone,
 		SetTradingParamsDone,
+		WaitingForPosition,
+		WaitingForOutOfPosition,
 		Trading,
 	}
 }
